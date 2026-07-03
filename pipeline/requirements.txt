@@ -1,0 +1,8 @@
+# The spike uses the standard library only, no install needed.
+# Optional convenience for fetching the Kaikki data:
+# kaikki-json>=0.1.1
+#
+# Real pipeline (later) will likely add:
+# requests
+# pymorphy3        # lemmatization for frequency ordering
+# tqdm

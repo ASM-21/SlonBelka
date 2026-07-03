@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.db
+.env
+
+# Node
+node_modules/
+dist/
+
+# Pipeline outputs (large)
+pipeline/out/
+data/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

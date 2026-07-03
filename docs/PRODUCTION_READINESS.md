@@ -1,0 +1,193 @@
+# Production readiness and build guide
+
+The plan to take Slonbelka from a tested scaffold to a shippable product. Written so each task can be picked up independently by Claude Code. Work top to bottom: later phases assume earlier ones are done.
+
+## Status snapshot
+
+Done and tested:
+- Full app loop: register, verify, lessons, reviews, dashboard, leeches, extra study, item browser, user synonyms, burned-item resurrection, stats, settings, vacation mode, offline reviews with sync.
+- SRS engine, answer grading (Russian stress and ё/е insensitive), auth with refresh-token rotation, in-memory rate limiting, Stripe billing scaffold with entitlements.
+- Stable item identity: items carry a unique `external_id`; all content loads through `app/content/importer.py::upsert_items`, which upserts on that key and never reassigns row ids. Migration `3284f0181e9e` adds it safely on empty and populated databases.
+- 174 backend tests, 26 frontend tests, four Alembic migrations.
+
+Not built yet, in priority order:
+- Real content: only ~14 demo words. No lemmatized frequency deck, no level design, no mnemonics, no example sentences.
+- Audio: model fields and the source/license/attribution table exist, but there is no ingestion, normalization, storage, or serving.
+- Production infrastructure: rate limiting is in-memory, email and push are stubs, no object storage or CDN, no error tracking, no CI, no deploy.
+- Launch requirements: no account deletion or data export, no onboarding, email verification is off.
+
+## Two decisions to lock before writing pipeline code
+
+Everything downstream depends on these. Write the choice into `CLAUDE.md` once made.
+
+Decision 1, item sense-splitting. One item per lemma, or per lemma plus sense. The default key is `{pos}:{lemma}:{sense}`. Recommendation: default to one item per lemma+pos for v1, and only split a homograph into separate senses when the two meanings are genuinely different words to learn. Splitting later is a content migration, not a schema change, because the importer is keyed on `external_id`.
+
+Decision 2, native audio versus TTS. Recommendation: native pronunciation first for every headword; where native audio is missing, either use a clearly labeled TTS fallback or exclude the word from v1 rather than ship a silent or robotic headword. TTS is fine for example sentences. Record the source and license on every audio asset. Get the real native-coverage number from the content spike before committing to deck size.
+
+## Phase A: Content foundation
+
+### A1. Stable item identity — DONE
+Items have a unique `external_id`; content upserts on it; migration verified on fresh and populated databases; importer has tests. Nothing to do; do not regress it.
+
+### A2. Run the content spike against real data
+Goal: real coverage numbers for stress marks, glosses, part of speech, and native audio across the Russian frequency list, so deck scope is a decision and not a guess.
+Why: scope, lemmatization need, and the audio fallback policy all depend on these numbers.
+Where: `pipeline/spike_data_check.py`, `pipeline/README.md`.
+Steps:
+1. Download the Kaikki Russian dictionary JSONL and a frequency list (hermitdave FrequencyWords ru is CC-BY-SA) as described in `pipeline/README.md`.
+2. Run the spike over the real files.
+3. Record, for the top N frequency ranks: percent with a usable gloss, percent with stress information, percent with an IPA field, and percent with a native audio reference. Break it down before and after lemmatization.
+Acceptance: a short written coverage report checked into `pipeline/`, with the numbers that set v1 scope and the audio fallback rate.
+Commands:
+```bash
+cd pipeline && python spike_data_check.py --kaikki /path/to/kaikki.org-dictionary-Russian.jsonl
+```
+
+### A3. Build the content pipeline
+Goal: a repeatable, idempotent pipeline that turns raw sources into validated content records and loads them through the importer.
+Why: the seed is a demo; the real deck needs lemmatization, curation, level assignment, and validation, produced the same way every time.
+Where: new module under `pipeline/`, plus `app/content/importer.py` (already the load primitive).
+Steps:
+1. Lemmatize the frequency list (pymorphy3 or equivalent) and collapse inflected forms; function words dominate the raw top ranks, so lemmatization is required, not optional.
+2. Join against the Kaikki dump for gloss, part of speech, stress, and IPA.
+3. Apply the sense-splitting decision to assign `external_id` per record.
+4. Assign `level` and `frequency_rank` from a curated ordering (see C1).
+5. Emit content records as a versioned artifact (for example JSON per level), then load with `upsert_items`. The build must fail if `validate_item` reports any problem.
+Acceptance: running the pipeline twice produces zero-diff database state (idempotent); an intentionally malformed record aborts the load with a clear error; item ids are stable across reruns.
+Commands: the loader should call `upsert_items(db, records)` and print created/updated counts.
+
+## Phase B: Audio pipeline
+
+### B1. Audio sourcing and licensing
+Goal: a per-word decision of native versus TTS, with source and license captured.
+Why: native pronunciation is the product; licensing mistakes are expensive to unwind.
+Where: `pipeline/` audio module; the `AudioAsset` model already has source, license, and attribution fields.
+Steps:
+1. For each headword, look up native audio (Wiktionary and Wikimedia Commons are CC but require per-file attribution). Forvo is not license-clean for redistribution; do not scrape it.
+2. Where native audio is missing, apply the Decision 2 policy: labeled TTS fallback (Azure has usable Russian voices; `azure_speech_*` config fields exist) or exclude from v1.
+3. Use TTS, not Tatoeba audio, for example sentences.
+4. Record source, license, and attribution on every asset.
+Acceptance: every shipped headword has an audio asset with a recorded source and license, and native-versus-TTS is explicit per word.
+
+### B2. Audio processing and storage
+Goal: normalized audio served fast, offline-cacheable.
+Where: `pipeline/` audio module, plus a small storage abstraction in the backend.
+Steps:
+1. Normalize loudness to a consistent target, trim leading and trailing silence, and transcode to one or two web formats.
+2. Store in object storage behind a CDN. Add a storage backend abstraction so dev uses local disk and prod uses S3 or R2; keep credentials in config.
+3. Set each item's `audio_url` to the served URL during content load.
+4. Confirm the service worker caches audio for offline use, with a sane cache-size bound.
+Acceptance: headword audio plays in the app from the CDN, is loudness-consistent, and is available offline after first play.
+
+## Phase C: Content population
+
+### C1. Scope and level design
+Goal: a curated, ordered deck for v1.
+Why: the ordering is the product; a large unordered list is not.
+Steps: pick a tight v1 size (1000 to 1500 words is a reasonable target), order by a blend of frequency and teachability, and assign words to levels with a consistent words-per-level count. The SRS engine already gates level unlocks; this task is the curriculum design that fills it.
+Acceptance: every word has a level and a place in the ordering; level sizes are consistent; the free tier boundary (`free_level_limit`) lands somewhere sensible.
+
+### C2. Example sentences
+Goal: one or two example sentences per word.
+Where: `ExampleSentence` model.
+Steps: source sentences from Tatoeba (CC-BY, attribution required) for text; generate sentence audio with TTS (not Tatoeba audio). Prefer sentences that use already-taught vocabulary.
+Acceptance: each word has at least one example with translation and audio, attribution recorded.
+
+### C3. Mnemonics
+Goal: memory hooks for meaning and, where useful, reading.
+Why, and the honest tradeoff: mnemonics are the largest hidden cost and a real differentiator. Good ones for 1500 words are months of writing. Generic or weak mnemonics are worse than none. Options: write your own over time, AI-assist with heavy human editing, or launch without full mnemonics and lean on audio and examples. Recommendation: do not block launch on complete mnemonics; ship the ones that are good and add the rest as an ongoing content stream.
+Where: `Mnemonic` model; the frontend already renders and lets a user edit their own.
+Acceptance: whatever ships is genuinely helpful; nothing filler is shipped just to fill the field.
+
+## Phase D: Infrastructure and ops
+
+### D1. Rate limiting on Redis
+Goal: replace the in-memory limiter with a shared store so limits hold across processes.
+Where: `app/services/ratelimit.py`.
+Acceptance: limits enforced with multiple workers; existing rate-limit tests still pass.
+
+### D2. Email provider
+Goal: real verification and password-reset email.
+Where: `app/services/email.py` (currently a dev outbox stub).
+Acceptance: verification and reset emails deliver in a real environment; the dev outbox stays available for tests.
+
+### D3. Push sender and scheduler
+Goal: actually send the review-due web push notifications.
+Where: subscribe endpoint and service worker handler already exist; add a sender plus a scheduler, and add VAPID keys to config (not present yet).
+Acceptance: a due-reviews notification is delivered to a subscribed device on schedule.
+
+### D4. Observability
+Goal: know when things break.
+Steps: add structured logging and error tracking (for example Sentry) to the backend, and basic request metrics.
+Acceptance: an unhandled error surfaces in the error tracker with a stack trace and request context.
+
+### D5. CI
+Goal: never merge a red build.
+Steps: on every push, run the backend suite, the frontend typecheck, build, and vitest, and a migration check (fresh chain applies).
+Acceptance: CI runs all of the above and blocks merge on failure.
+
+### D6. Deploy
+Goal: a running production environment.
+Steps: containerized backend, managed Postgres, object storage, CDN, and the frontend served as static assets. A Dockerfile and compose file already exist as a starting point. Set `environment=prod` (which enforces the strong-secret check) and provide all required env vars.
+Acceptance: the app is reachable, migrations run on deploy, and audio serves from the CDN.
+
+## Phase E: Launch readiness
+
+### E1. Account deletion and data export
+Goal: a user can delete their account and export their data.
+Why: required for app stores and common privacy regimes.
+Where: new endpoints under the account area; delete must remove dependent rows (states, review and lesson events, tokens, synonyms, push subscriptions, subscription).
+Acceptance: deletion removes all user data and cannot be triggered accidentally; export returns the user's data in a portable format.
+
+### E2. Enforce email verification for paid features
+Goal: turn on the verification gate that already exists.
+Where: `require_email_verification` in config.
+Acceptance: with the flag on, premium actions require a verified email; the demo flow can still run with it off.
+
+### E3. Onboarding
+Goal: a first-run experience, especially introducing the on-screen Cyrillic keyboard.
+Why: typing Cyrillic is the first real cliff for new users.
+Acceptance: a new user reaches their first review understanding how to input answers.
+
+### E4. Legal and licensing review
+Goal: confirm every content and audio source is used within its license, with attribution where required.
+Acceptance: a written record of each source and its license, and the attribution surfaced in-app where the license requires it.
+
+## Reference
+
+### Content record schema
+Fields accepted by `upsert_items`. Required: `lemma`, `stressed_form`, `translation_primary`, `level`.
+- `external_id` (string): stable key. If omitted, derived as `{pos}:{lemma}:{sense}`. Set it explicitly from the pipeline when splitting senses.
+- `type` (string): `vocab` by default.
+- `level` (int, >= 1): required.
+- `lemma` (string): dictionary form. Required.
+- `stressed_form` (string): display form with stress as combining acute U+0301 after the stressed vowel. Required.
+- `translation_primary` (string): the canonical gloss. Required.
+- `translations` (list of strings): the accept-list for meaning answers.
+- `part_of_speech`, `gender`, `aspect`, `ipa` (strings, optional).
+- `audio_url` (string, optional): set during audio load.
+- `frequency_rank` (int, optional).
+- `notes` (string, optional).
+An invalid record aborts the whole batch; nothing is written.
+
+### Environment variables
+Defaults are dev-friendly; set real values for production.
+- `ENVIRONMENT`: `dev`, `test`, or `prod`. In `prod` the app refuses to start with the default JWT secret.
+- `DATABASE_URL`: sqlite by default; a Postgres URL in production.
+- `JWT_SECRET`: required strong value in production. `JWT_ALGORITHM`, `ACCESS_TOKEN_MINUTES`, `REFRESH_TOKEN_DAYS` have sane defaults.
+- `REQUIRE_EMAIL_VERIFICATION`: off by default; on in production for paid features.
+- `FREE_LEVEL_LIMIT`: levels at or below this are free.
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY`, `STRIPE_PRICE_LIFETIME`, `BILLING_SUCCESS_URL`, `BILLING_CANCEL_URL`: billing.
+- `FRONTEND_ORIGIN`: CORS origin for the frontend.
+- `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`: TTS.
+- To add for production, not yet in config: object storage credentials and bucket, CDN base URL, VAPID public and private keys for push, and the error-tracking DSN.
+
+### Audio pipeline spec (summary)
+Native first for headwords, TTS labeled fallback, TTS for sentences. Normalize loudness, trim silence, transcode to web formats, store in object storage behind a CDN, record source and license per asset, cache for offline within a size bound.
+
+### Licensing notes
+- hermitdave FrequencyWords (frequency list): CC-BY-SA, attribution and share-alike.
+- Wiktionary and Wikimedia Commons audio: CC, per-file attribution required.
+- Tatoeba sentences: CC-BY, attribution required. Do not use Tatoeba audio for headwords; generate sentence audio with TTS.
+- Forvo: not license-clean for redistribution; do not scrape.
+Keep an attribution record and surface it in-app wherever a license requires it.
