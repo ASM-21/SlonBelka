@@ -97,6 +97,9 @@ class SubmitReviewResponse(BaseModel):
     status: str                  # correct | incorrect | near_miss | override | duplicate
     correct: bool
     srs_stage: int
+    srs_stage_before: int        # stage when the answer was submitted; differs from
+    srs_stage_name: str          # srs_stage only when this answer completed a pass
+    srs_stage_before_name: str
     available_at: datetime | None = None
     pass_complete: bool = False
     passed: bool = False
