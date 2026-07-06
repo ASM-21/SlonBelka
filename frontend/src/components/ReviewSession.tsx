@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { addSynonym, getReviews, ReviewItem, submitReview, SubmitResult } from "../lib/api";
+import { addSynonym, getReviews, getSettings, ReviewItem, submitReview, SubmitResult, updateSettings } from "../lib/api";
 import { shuffle, spreadPairs } from "../lib/shuffle";
 import { enqueue } from "../lib/offlineQueue";
 import { drainQueue } from "../lib/sync";
+import { useFetch } from "../lib/useFetch";
+import { Layout } from "./CyrillicKeyboard";
 import ItemInfoPanel from "./ItemInfoPanel";
 import ProductionInput from "./ProductionInput";
 import SessionSummary from "./SessionSummary";
@@ -21,6 +23,21 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
   const [exited, setExited] = useState(false);
   const total = useRef(0);
   const sending = useRef(false);
+
+  // On-screen keyboard layout: the saved setting, overridable in-session (the
+  // toggle also persists the choice). State lives here so the per-question
+  // remount of the input does not reset it.
+  const settingsFetch = useFetch(getSettings);
+  const [kbOverride, setKbOverride] = useState<Layout | null>(null);
+  const kbLayout: Layout =
+    kbOverride ?? (settingsFetch.data?.keyboard_layout === "phonetic" ? "phonetic" : "jcuken");
+  const toggleKb = () => {
+    const next: Layout = kbLayout === "jcuken" ? "phonetic" : "jcuken";
+    setKbOverride(next);
+    updateSettings({ keyboard_layout: next }).catch(() => {
+      /* the in-session toggle still applies */
+    });
+  };
 
   // Session outcomes, accumulated without forcing re-renders; read at the end.
   const stats = useRef({
@@ -259,6 +276,8 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
                   setNearMiss(false);
                 }}
                 onSubmit={() => send(false)}
+                layout={kbLayout}
+                onToggleLayout={toggleKb}
               />
             )}
 

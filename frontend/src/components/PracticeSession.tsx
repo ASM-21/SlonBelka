@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { practice, ReviewItem } from "../lib/api";
+import { getSettings, practice, ReviewItem, updateSettings } from "../lib/api";
+import { useFetch } from "../lib/useFetch";
+import { Layout } from "./CyrillicKeyboard";
 import ProductionInput from "./ProductionInput";
 
 /**
@@ -18,6 +20,19 @@ export default function PracticeSession({
   const [queue, setQueue] = useState<ReviewItem[]>(items);
   const [input, setInput] = useState("");
   const [feedback, setFeedback] = useState<{ correct: boolean; expected: string; stressed: string } | null>(null);
+
+  // On-screen keyboard layout: saved setting, overridable in-session.
+  const settingsFetch = useFetch(getSettings);
+  const [kbOverride, setKbOverride] = useState<Layout | null>(null);
+  const kbLayout: Layout =
+    kbOverride ?? (settingsFetch.data?.keyboard_layout === "phonetic" ? "phonetic" : "jcuken");
+  const toggleKb = () => {
+    const next: Layout = kbLayout === "jcuken" ? "phonetic" : "jcuken";
+    setKbOverride(next);
+    updateSettings({ keyboard_layout: next }).catch(() => {
+      /* the in-session toggle still applies */
+    });
+  };
 
   if (queue.length === 0)
     return (
@@ -79,7 +94,13 @@ export default function PracticeSession({
               className="w-full rounded-xl border border-sb-line bg-sb-card px-3 py-3.5 text-center text-lg outline-none focus:border-sb-muted"
             />
           ) : (
-            <ProductionInput value={input} onChange={setInput} onSubmit={() => input && submit()} />
+            <ProductionInput
+              value={input}
+              onChange={setInput}
+              onSubmit={() => input && submit()}
+              layout={kbLayout}
+              onToggleLayout={toggleKb}
+            />
           )}
           {isMeaning && (
             <button

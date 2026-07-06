@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { mapPhysicalKey } from "../lib/typing";
-import CyrillicKeyboard from "./CyrillicKeyboard";
+import CyrillicKeyboard, { Layout } from "./CyrillicKeyboard";
 
 /**
  * Russian answer input shared by the review, lesson, and practice sessions.
@@ -13,10 +13,14 @@ export default function ProductionInput({
   value,
   onChange,
   onSubmit,
+  layout,
+  onToggleLayout,
 }: {
   value: string;
   onChange: (v: string) => void;
   onSubmit: () => void;
+  layout?: Layout;
+  onToggleLayout?: () => void;
 }) {
   const ref = useRef<HTMLInputElement>(null);
 
@@ -67,6 +71,8 @@ export default function ProductionInput({
         onKey={insert}
         onBackspace={() => onChange(value.slice(0, -1))}
         onSubmit={() => value && onSubmit()}
+        layout={layout}
+        onToggleLayout={onToggleLayout}
       />
     </>
   );

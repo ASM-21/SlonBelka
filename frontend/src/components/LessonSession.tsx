@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import SessionSummary from "./SessionSummary";
-import { completeLessons, getLessons, LessonItem } from "../lib/api";
+import { completeLessons, getLessons, getSettings, LessonItem, updateSettings } from "../lib/api";
 import { gradeMeaning, gradeProduction } from "../lib/grading";
 import { shuffle, spreadPairs } from "../lib/shuffle";
+import { useFetch } from "../lib/useFetch";
+import { Layout } from "./CyrillicKeyboard";
 import ProductionInput from "./ProductionInput";
 
 type Phase = "info" | "quiz" | "committing" | "done";
@@ -34,11 +36,25 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
   const [infoIdx, setInfoIdx] = useState(0);
 
   const [queue, setQueue] = useState<Question[]>([]);
+  const [quizTotal, setQuizTotal] = useState(0);
   const [input, setInput] = useState("");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [nearMiss, setNearMiss] = useState(false);
   const [summary, setSummary] = useState<{ started: number } | null>(null);
   const quizStats = useRef({ first: new Map<string, boolean>() });
+
+  // On-screen keyboard layout: saved setting, overridable in-session.
+  const settingsFetch = useFetch(getSettings);
+  const [kbOverride, setKbOverride] = useState<Layout | null>(null);
+  const kbLayout: Layout =
+    kbOverride ?? (settingsFetch.data?.keyboard_layout === "phonetic" ? "phonetic" : "jcuken");
+  const toggleKb = () => {
+    const next: Layout = kbLayout === "jcuken" ? "phonetic" : "jcuken";
+    setKbOverride(next);
+    updateSettings({ keyboard_layout: next }).catch(() => {
+      /* the in-session toggle still applies */
+    });
+  };
 
   useEffect(() => {
     getLessons().then(setItems).catch(() => setItems([]));
@@ -63,7 +79,25 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
     const item = items[infoIdx];
     const last = infoIdx === items.length - 1;
     return (
-      <div className="mx-auto mt-10 w-full max-w-md px-6 text-center">
+      <div className="mx-auto mt-6 w-full max-w-md px-6 text-center">
+        <div className="mb-5 flex items-center gap-3">
+          <button
+            onClick={onDone}
+            aria-label="End lesson"
+            className="h-9 w-9 shrink-0 rounded-xl bg-sb-card2 text-base text-sb-ink hover:bg-sb-line"
+          >
+            ✕
+          </button>
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2">
+            <div
+              className="h-full rounded-full bg-sb-accent transition-all"
+              style={{ width: `${((infoIdx + 1) / items.length) * 100}%` }}
+            />
+          </div>
+          <span className="shrink-0 text-sm font-medium text-sb-muted">
+            {infoIdx + 1} / {items.length}
+          </span>
+        </div>
         <p className="mb-3 text-sm font-medium text-sb-muted">
           Новое слово {infoIdx + 1} из {items.length} · New word {infoIdx + 1} of {items.length}
         </p>
@@ -103,7 +137,9 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
           {last ? (
             <button
               onClick={() => {
-                setQueue(buildQueue(items));
+                const q = buildQueue(items);
+                setQuizTotal(q.length);
+                setQueue(q);
                 setPhase("quiz");
               }}
               className="flex-1 rounded-xl bg-sb-ink px-5 py-3 font-bold text-white"
@@ -193,11 +229,28 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
     }
   };
 
+  const quizProgress = quizTotal > 0 ? Math.round(((quizTotal - queue.length) / quizTotal) * 100) : 0;
+
   return (
-    <div className="mx-auto mt-10 w-full max-w-md px-5">
-      <p className="mb-3 text-center text-sm font-medium text-sb-muted">
-        {remainingItems} {remainingItems === 1 ? "word" : "words"} left to clear
-      </p>
+    <div className="mx-auto mt-6 w-full max-w-md px-5">
+      <div className="mb-5 flex items-center gap-3">
+        <button
+          onClick={onDone}
+          aria-label="End lesson"
+          className="h-9 w-9 shrink-0 rounded-xl bg-sb-card2 text-base text-sb-ink hover:bg-sb-line"
+        >
+          ✕
+        </button>
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2">
+          <div
+            className="h-full rounded-full bg-sb-accent transition-all"
+            style={{ width: `${quizProgress}%` }}
+          />
+        </div>
+        <span className="shrink-0 text-sm font-medium text-sb-muted">
+          {remainingItems} {remainingItems === 1 ? "word" : "words"} left
+        </span>
+      </div>
 
       <div
         key={`${cur.itemId}:${cur.type}`}
@@ -241,6 +294,8 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
                 setNearMiss(false);
               }}
               onSubmit={() => grade(false)}
+              layout={kbLayout}
+              onToggleLayout={toggleKb}
             />
           )}
 

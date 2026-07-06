@@ -8,7 +8,7 @@ import { useRef, useState } from "react";
  * Not runtime-verified in this scaffold (no browser here); standard React + Tailwind.
  */
 
-type Layout = "jcuken" | "phonetic";
+export type Layout = "jcuken" | "phonetic";
 
 // Standard Russian JCUKEN layout.
 const JCUKEN: string[][] = [
