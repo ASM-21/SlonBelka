@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { addSynonym, getReviews, ReviewItem, submitReview, SubmitResult } from "../lib/api";
+import { shuffle, spreadPairs } from "../lib/shuffle";
 import { enqueue } from "../lib/offlineQueue";
 import { drainQueue } from "../lib/sync";
 import CyrillicKeyboard from "./CyrillicKeyboard";
@@ -26,7 +27,11 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
   });
 
   useEffect(() => {
-    getReviews().then(setQueue).catch(() => setQueue([]));
+    // Shuffle so the order is unpredictable, then spread so a word's two
+    // question types are not back to back (the server sends them adjacent).
+    getReviews()
+      .then((q) => setQueue(spreadPairs(shuffle(q), (r) => r.item_id)))
+      .catch(() => setQueue([]));
   }, []);
 
   // When the session empties, push anything that was queued offline.

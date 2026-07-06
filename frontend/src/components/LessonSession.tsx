@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import SessionSummary from "./SessionSummary";
 import { completeLessons, getLessons, LessonItem } from "../lib/api";
 import { gradeMeaning, gradeProduction } from "../lib/grading";
+import { shuffle, spreadPairs } from "../lib/shuffle";
 import CyrillicKeyboard from "./CyrillicKeyboard";
 
 type Phase = "info" | "quiz" | "committing" | "done";
@@ -24,12 +25,7 @@ function buildQueue(items: LessonItem[]): Question[] {
     qs.push({ itemId: item.id, type: "meaning", item });
     if (item.type === "vocab") qs.push({ itemId: item.id, type: "production", item });
   }
-  // Shuffle so the order is not predictable (Fisher-Yates).
-  for (let i = qs.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [qs[i], qs[j]] = [qs[j], qs[i]];
-  }
-  return qs;
+  return spreadPairs(shuffle(qs), (q) => q.itemId);
 }
 
 export default function LessonSession({ onDone }: { onDone: () => void }) {
