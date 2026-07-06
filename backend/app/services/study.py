@@ -77,7 +77,7 @@ def leech_study_set(db: Session, user: User) -> list[dict]:
 
 
 def extra_study_set(db: Session, user: User, mode: str, level: int | None = None) -> list[dict]:
-    """Free-practice prompts. Modes: recent_mistakes, recently_learned, level."""
+    """Free-practice prompts. Modes: recent_mistakes, recently_learned, level, burned."""
     base = select(UserItemState).where(UserItemState.user_id == user.id)
     if mode == "recent_mistakes":
         q = base.where(UserItemState.incorrect_count > 0).order_by(
@@ -88,6 +88,12 @@ def extra_study_set(db: Session, user: User, mode: str, level: int | None = None
     elif mode == "level":
         ids = select(Item.id).where(Item.level == (level or user.current_level))
         q = base.where(UserItemState.item_id.in_(ids))
+    elif mode == "burned":
+        # Practice retired words without resurrecting them; grading never
+        # touches the SRS schedule, so burned items stay burned.
+        q = base.where(UserItemState.srs_stage == engine.BURNED).order_by(
+            UserItemState.burned_at.desc()
+        )
     else:
         return []
     return _study_set_for_states(db, list(db.scalars(q).all()))
