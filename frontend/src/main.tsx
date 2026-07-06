@@ -1,6 +1,18 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+// Self-hosted fonts: the service worker never caches cross-origin requests,
+// so Google Fonts would break offline. Bundled files get cached like any asset.
+import "@fontsource/manrope/400.css";
+import "@fontsource/manrope/500.css";
+import "@fontsource/manrope/600.css";
+import "@fontsource/manrope/700.css";
+import "@fontsource/manrope/800.css";
+import "@fontsource/baloo-2/600.css";
+import "@fontsource/baloo-2/700.css";
+import "@fontsource/baloo-2/800.css";
+import "@fontsource/nunito/700.css";
+import "@fontsource/nunito/800.css";
 import "./index.css";
 import { initSync } from "./lib/sync";
 
