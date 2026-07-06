@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BillingStatus, billingPortal, checkout, getBillingStatus } from "../lib/api";
+import { PageHeader } from "./ui";
 
 // Display prices only; Stripe charges what the configured price IDs say.
 // PLACEHOLDER values: update to the real Stripe amounts before launch.
@@ -44,54 +45,50 @@ export default function UpgradePage({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <div className="mx-auto mt-10 w-full max-w-md px-5">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Slonbelka Premium</h2>
-        <button onClick={onDone} className="text-sm text-neutral-400 hover:text-neutral-700">
-          done
-        </button>
-      </div>
+    <div className="mx-auto w-full max-w-md px-5 pb-10 pt-6">
+      <PageHeader ru="Слонбелка Премиум" en="Slonbelka Premium" onBack={onDone} />
 
       {status?.is_premium ? (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center">
-          <div className="text-lg font-medium text-emerald-800">You're on Premium</div>
-          <div className="mt-1 text-sm text-emerald-700">
+        <div className="rounded-3xl border border-sb-line bg-sb-card p-6 text-center">
+          <div className="text-lg font-bold text-sb-ink">You're on Premium</div>
+          <div className="mt-1 text-sm text-sb-muted">
             {status.plan ? `${status.plan} plan` : "active"}
             {status.cancel_at_period_end ? " · cancels at period end" : ""}
           </div>
           <button
             onClick={manage}
             disabled={busy}
-            className="mt-4 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+            className="mt-4 rounded-lg bg-sb-ink px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
           >
             Manage subscription
           </button>
         </div>
       ) : (
         <>
-          <p className="text-neutral-600">
-            Free covers levels 1–{status?.free_level_limit ?? 3}. Premium unlocks every level and all future content.
+          <p className="text-sm leading-relaxed text-sb-muted">
+            Free covers levels 1–{status?.free_level_limit ?? 3}. Premium unlocks every level and
+            all future content.
           </p>
-          <div className="mt-5 space-y-3">
+          <div className="mt-5 space-y-2.5">
             {PLANS.map((p) => (
               <button
                 key={p.id}
                 onClick={() => startCheckout(p.id)}
                 disabled={busy}
-                className="flex w-full items-center justify-between rounded-xl border border-neutral-200 px-4 py-4 text-left hover:border-neutral-900 disabled:opacity-40"
+                className="flex w-full items-center justify-between rounded-2xl border border-sb-line bg-sb-card px-4 py-4 text-left hover:border-sb-accent disabled:opacity-40"
               >
                 <div>
-                  <div className="font-medium">{p.name}</div>
-                  <div className="text-sm text-neutral-500">{p.blurb}</div>
+                  <div className="font-semibold text-sb-ink">{p.name}</div>
+                  <div className="text-sm text-sb-muted">{p.blurb}</div>
                 </div>
                 <span className="text-right">
-                  <span className="font-semibold">{p.price}</span>{" "}
-                  <span className="text-sm text-neutral-500">{p.cadence}</span>
+                  <span className="font-display text-lg font-extrabold text-sb-ink">{p.price}</span>{" "}
+                  <span className="text-sm text-sb-muted">{p.cadence}</span>
                 </span>
               </button>
             ))}
           </div>
-          <p className="mt-4 text-xs leading-relaxed text-neutral-500">
+          <p className="mt-4 text-xs leading-relaxed text-sb-muted">
             Monthly and yearly plans renew automatically at the then-current price until you
             cancel. Cancel anytime from Manage subscription on this screen; you keep access
             through the end of the paid period. Lifetime is a single payment and never renews.
@@ -99,10 +96,10 @@ export default function UpgradePage({ onDone }: { onDone: () => void }) {
         </>
       )}
 
-      {note && <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{note}</p>}
+      {note && <p className="mt-4 rounded-xl bg-sb-gold-soft px-3 py-2 text-sm text-[#7A5F1E]">{note}</p>}
 
       {status && (
-        <p className="mt-6 text-center text-xs text-neutral-400">
+        <p className="mt-6 text-center text-xs text-sb-muted">
           Currently at level {status.current_level} · access through level {status.accessible_level}
         </p>
       )}

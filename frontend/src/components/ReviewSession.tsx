@@ -87,7 +87,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
     return (
       <Centered>
         Nothing due right now.
-        <button onClick={onDone} className="mt-4 block w-full text-neutral-500 underline">
+        <button onClick={onDone} className="mt-4 block w-full text-sb-muted underline">
           back home
         </button>
       </Centered>
@@ -390,5 +390,5 @@ function StageChip({ r }: { r: SubmitResult }) {
 }
 
 function Centered({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto mt-24 max-w-md px-6 text-center text-neutral-600">{children}</div>;
+  return <div className="mx-auto mt-24 max-w-md px-6 text-center text-sb-muted">{children}</div>;
 }

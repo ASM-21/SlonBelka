@@ -26,13 +26,13 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
   if (status === "loading")
     return (
       <Panel>
-        <p className="py-2 text-center text-sm text-neutral-400">loading details...</p>
+        <p className="py-2 text-center text-sm text-sb-muted">loading details...</p>
       </Panel>
     );
   if (status === "error" || !item)
     return (
       <Panel>
-        <p className="py-2 text-center text-sm text-neutral-500">
+        <p className="py-2 text-center text-sm text-sb-muted">
           Couldn't load details.{" "}
           <button onClick={retry} className="font-medium underline">
             Retry
@@ -82,7 +82,7 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
       <Row label="Meaning">
         <span className="font-medium">{item.translation_primary}</span>
         {alternatives.length > 0 && (
-          <span className="text-neutral-500">, {alternatives.join(", ")}</span>
+          <span className="text-sb-muted">, {alternatives.join(", ")}</span>
         )}
       </Row>
 
@@ -93,9 +93,9 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
         <Row label="Audio">
           <button
             onClick={() => new Audio(item.audio_url!).play()}
-            className="rounded-full bg-neutral-100 px-3 py-1 text-sm"
+            className="rounded-full bg-sb-card2 px-3 py-1 text-sm font-semibold"
           >
-            ▶ play
+            ▶ прослушать · play
           </button>
         </Row>
       )}
@@ -106,12 +106,12 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
             {synonyms.map((syn) => (
               <span
                 key={syn}
-                className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-0.5 text-sm"
+                className="inline-flex items-center gap-1 rounded-full bg-sb-card2 px-2.5 py-0.5 text-sm"
               >
                 {syn}
                 <button
                   onClick={() => removeSyn(syn)}
-                  className="text-neutral-400 hover:text-neutral-700"
+                  className="text-sb-muted hover:text-sb-ink"
                   aria-label={`remove ${syn}`}
                 >
                   ×
@@ -126,12 +126,12 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
             onChange={(e) => setNewSyn(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addSyn()}
             placeholder="add an accepted meaning"
-            className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-2.5 py-1 text-sm"
+            className="min-w-0 flex-1 rounded-lg border border-sb-line bg-white px-2.5 py-1 text-sm"
           />
           <button
             onClick={addSyn}
             disabled={savingSyn || !newSyn.trim()}
-            className="rounded-lg bg-neutral-900 px-3 py-1 text-sm font-medium text-white disabled:opacity-40"
+            className="rounded-lg bg-sb-ink px-3 py-1 text-sm font-bold text-white disabled:opacity-40"
           >
             Add
           </button>
@@ -143,8 +143,8 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
           <ul className="space-y-2">
             {item.sentences.map((s, i) => (
               <li key={i}>
-                <div className="text-neutral-800">{s.ru}</div>
-                <div className="text-xs text-neutral-500">{s.en}</div>
+                <div className="text-sb-ink">{s.ru}</div>
+                <div className="text-xs text-sb-muted">{s.en}</div>
               </li>
             ))}
           </ul>
@@ -160,12 +160,12 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
           }}
           placeholder="a hook to remember this word"
           rows={2}
-          className="w-full rounded-lg border border-neutral-300 px-2.5 py-1.5 text-sm"
+          className="w-full rounded-lg border border-sb-line bg-white px-2.5 py-1.5 text-sm"
         />
         <button
           onClick={saveMnem}
           disabled={mnemonicSaved}
-          className="mt-1 rounded bg-neutral-900 px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
+          className="mt-1 rounded-lg bg-sb-ink px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
         >
           {mnemonicSaved ? "saved" : "save"}
         </button>
@@ -175,14 +175,14 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
 }
 
 function Panel({ children }: { children: React.ReactNode }) {
-  return <div className="mt-4 rounded-xl border border-neutral-200 bg-white p-4 text-left">{children}</div>;
+  return <div className="mt-4 rounded-2xl border border-sb-line bg-sb-card p-4 text-left">{children}</div>;
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="mb-4 last:mb-0">
-      <div className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-400">{label}</div>
-      <div className="text-sm text-neutral-800">{children}</div>
+      <div className="mb-1 text-xs font-bold uppercase tracking-wider text-sb-muted">{label}</div>
+      <div className="text-sm text-sb-ink">{children}</div>
     </div>
   );
 }

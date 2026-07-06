@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { getLeeches, Leech, leechStudy, ReviewItem, saveMnemonic } from "../lib/api";
-import { LEECH_LABEL } from "../lib/labels";
+import { LEECH_LABEL, LEECH_LABEL_RU } from "../lib/labels";
 import { useFetch } from "../lib/useFetch";
 import PracticeSession from "./PracticeSession";
+import { PageHeader } from "./ui";
 
 export default function LeechesPage({ onDone }: { onDone: () => void }) {
   const { status, data: leeches, retry } = useFetch(getLeeches);
@@ -18,23 +19,21 @@ export default function LeechesPage({ onDone }: { onDone: () => void }) {
     return (
       <Centered>
         Couldn't load this page.
-        <button onClick={retry} className="mt-4 block w-full font-medium text-neutral-900 underline">
+        <button onClick={retry} className="mt-4 block w-full font-semibold text-sb-ink underline">
           Retry
         </button>
-        <button onClick={onDone} className="mt-2 block w-full text-neutral-500 underline">
+        <button onClick={onDone} className="mt-2 block w-full text-sb-muted underline">
           back home
         </button>
       </Centered>
     );
 
   return (
-    <div className="mx-auto mt-12 w-full max-w-md px-5">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">{LEECH_LABEL}</h2>
-        <button onClick={onDone} className="text-sm text-neutral-400 hover:text-neutral-700">
-          back
-        </button>
-      </div>
+    <div className="mx-auto w-full max-w-md px-5 pb-10 pt-6">
+      <PageHeader ru={LEECH_LABEL_RU} en={LEECH_LABEL} onBack={onDone} />
+      <p className="mb-4 text-sm leading-relaxed text-sb-muted">
+        Слова, которые чаще всего вас подводят. · The words that trip you up most.
+      </p>
 
       {leeches.length === 0 ? (
         <Centered>No tricky words right now. Words you keep missing will show up here.</Centered>
@@ -48,11 +47,11 @@ export default function LeechesPage({ onDone }: { onDone: () => void }) {
                 setNote("Couldn't start the session. Try again.");
               }
             }}
-            className="mb-4 w-full rounded-lg bg-neutral-900 py-2 font-medium text-white"
+            className="mb-4 w-full rounded-xl bg-sb-ink py-3 font-bold text-white"
           >
-            Study these {leeches.length}
+            Тренировать эти {leeches.length} · Study these {leeches.length}
           </button>
-          {note && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{note}</p>}
+          {note && <p className="mb-3 rounded-xl bg-sb-accent-soft px-3 py-2 text-sm text-sb-accent2">{note}</p>}
           <div className="flex flex-col gap-2">
             {leeches.map((l) => (
               <LeechRow key={l.item_id} leech={l} />
@@ -75,13 +74,13 @@ function LeechRow({ leech }: { leech: Leech }) {
   };
 
   return (
-    <div className="rounded-xl border border-neutral-200 p-3">
+    <div className="rounded-2xl border border-sb-line bg-sb-card p-3.5">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-xl">{leech.stressed_form}</div>
-          <div className="text-sm text-neutral-500">{leech.translation_primary}</div>
+          <div className="font-display text-xl font-bold text-sb-ink">{leech.stressed_form}</div>
+          <div className="text-sm text-sb-muted">{leech.translation_primary}</div>
         </div>
-        <div className="text-right text-xs text-neutral-500">
+        <div className="text-right text-xs text-sb-muted">
           <div>{leech.stage_name}</div>
           <div>
             {leech.incorrect_count} misses
@@ -91,7 +90,7 @@ function LeechRow({ leech }: { leech: Leech }) {
       </div>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="mt-2 text-xs text-neutral-400 hover:text-neutral-700"
+        className="mt-2 text-xs text-sb-muted hover:text-sb-ink"
       >
         {open ? "hide mnemonic" : "add / edit mnemonic"}
       </button>
@@ -104,13 +103,13 @@ function LeechRow({ leech }: { leech: Leech }) {
               setSaved(false);
             }}
             placeholder="a hook to remember this word"
-            className="w-full rounded-lg border border-neutral-300 px-2 py-1 text-sm"
+            className="w-full rounded-lg border border-sb-line bg-white px-2 py-1 text-sm"
             rows={2}
           />
           <button
             onClick={save}
             disabled={!text || saved}
-            className="mt-1 rounded bg-neutral-900 px-3 py-1 text-xs text-white disabled:opacity-40"
+            className="mt-1 rounded-lg bg-sb-ink px-3 py-1 text-xs font-semibold text-white disabled:opacity-40"
           >
             {saved ? "saved" : "save"}
           </button>
@@ -121,5 +120,5 @@ function LeechRow({ leech }: { leech: Leech }) {
 }
 
 function Centered({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto mt-16 max-w-md px-6 text-center text-neutral-600">{children}</div>;
+  return <div className="mx-auto mt-16 max-w-md px-6 text-center text-sb-muted">{children}</div>;
 }

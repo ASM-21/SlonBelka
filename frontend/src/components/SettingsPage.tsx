@@ -3,6 +3,7 @@ import { getSettings, Settings, setVacation, updateSettings } from "../lib/api";
 import { enableReminders, pushSupported } from "../lib/push";
 import { useFetch } from "../lib/useFetch";
 import { LegalDoc } from "./LegalPage";
+import { PageHeader } from "./ui";
 
 export default function SettingsPage({
   onDone,
@@ -22,7 +23,7 @@ export default function SettingsPage({
         Couldn't load settings.
         <button
           onClick={retry}
-          className="mt-4 w-full rounded-lg bg-neutral-900 py-2 font-medium text-white"
+          className="mt-4 w-full rounded-xl bg-sb-ink py-2.5 font-bold text-white"
         >
           Retry
         </button>
@@ -44,13 +45,8 @@ export default function SettingsPage({
   };
 
   return (
-    <div className="mx-auto mt-10 w-full max-w-md px-5">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Settings</h2>
-        <button onClick={onDone} className="text-sm text-neutral-400 hover:text-neutral-700">
-          done
-        </button>
-      </div>
+    <div className="mx-auto w-full max-w-md px-5 pb-10 pt-6">
+      <PageHeader ru="Настройки" en="Settings" onBack={onDone} />
 
       <Row label="Daily lesson limit" hint="New words you can start each day">
         <div className="flex items-center gap-2">
@@ -73,18 +69,18 @@ export default function SettingsPage({
           value={s.keyboard_layout}
           onChange={(e) => patch({ keyboard_layout: e.target.value })}
           disabled={saving}
-          className="rounded-lg border border-neutral-300 px-2 py-1 text-sm"
+          className="rounded-lg border border-sb-line bg-sb-card px-2 py-1 text-sm"
         >
           <option value="jcuken">JCUKEN (standard)</option>
           <option value="phonetic">Phonetic</option>
         </select>
       </Row>
 
-      <div className="mt-8 rounded-xl border border-neutral-200 p-4">
+      <div className="mt-8 rounded-2xl border border-sb-line bg-sb-card p-4">
         <div className="flex items-center justify-between">
           <div>
-            <div className="font-medium">Vacation mode</div>
-            <div className="text-sm text-neutral-500">
+            <div className="font-semibold text-sb-ink">Vacation mode</div>
+            <div className="text-sm text-sb-muted">
               {s.frozen ? "Reviews are paused. No new reviews appear and items don't fall behind." : "Pause reviews while you're away"}
             </div>
           </div>
@@ -92,9 +88,9 @@ export default function SettingsPage({
         </div>
       </div>
 
-      <div className="mt-4 rounded-xl border border-neutral-200 p-4">
-        <div className="font-medium">Review reminders</div>
-        <div className="mt-1 text-sm text-neutral-500">
+      <div className="mt-4 rounded-2xl border border-sb-line bg-sb-card p-4">
+        <div className="font-semibold text-sb-ink">Review reminders</div>
+        <div className="mt-1 text-sm text-sb-muted">
           Get a push notification when reviews are waiting.
         </div>
         {pushSupported() ? (
@@ -109,36 +105,36 @@ export default function SettingsPage({
                     : "Reminders aren't available here.",
               );
             }}
-            className="mt-3 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
+            className="mt-3 rounded-lg bg-sb-ink px-4 py-2 text-sm font-bold text-white"
           >
             Enable reminders
           </button>
         ) : (
-          <p className="mt-3 text-sm text-neutral-400">
+          <p className="mt-3 text-sm text-sb-muted">
             Not available in this browser or build (needs notification support and a configured key).
           </p>
         )}
-        {reminderMsg && <p className="mt-2 text-sm text-neutral-600">{reminderMsg}</p>}
+        {reminderMsg && <p className="mt-2 text-sm text-sb-muted">{reminderMsg}</p>}
       </div>
 
-      <div className="mt-4 rounded-xl border border-neutral-200 p-4">
-        <div className="font-medium">Legal</div>
+      <div className="mt-4 rounded-2xl border border-sb-line bg-sb-card p-4">
+        <div className="font-semibold text-sb-ink">Legal</div>
         <div className="mt-2 flex flex-col items-start gap-2 text-sm">
           <button
             onClick={() => onShowLegal("terms")}
-            className="text-neutral-600 underline hover:text-neutral-900"
+            className="text-sb-muted underline hover:text-sb-ink"
           >
             Terms of Service
           </button>
           <button
             onClick={() => onShowLegal("privacy")}
-            className="text-neutral-600 underline hover:text-neutral-900"
+            className="text-sb-muted underline hover:text-sb-ink"
           >
             Privacy Policy
           </button>
           <button
             onClick={() => onShowLegal("licenses")}
-            className="text-neutral-600 underline hover:text-neutral-900"
+            className="text-sb-muted underline hover:text-sb-ink"
           >
             Content licenses and attribution
           </button>
@@ -150,10 +146,10 @@ export default function SettingsPage({
 
 function Row({ label, hint, children }: { label: string; hint: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between border-b border-neutral-100 py-4">
+    <div className="flex items-center justify-between border-b border-sb-line py-4">
       <div className="pr-4">
-        <div className="font-medium">{label}</div>
-        <div className="text-sm text-neutral-500">{hint}</div>
+        <div className="font-semibold text-sb-ink">{label}</div>
+        <div className="text-sm text-sb-muted">{hint}</div>
       </div>
       {children}
     </div>
@@ -165,7 +161,7 @@ function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; d
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? "bg-emerald-500" : "bg-neutral-300"} disabled:opacity-50`}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? "bg-sb-enl" : "bg-sb-line"} disabled:opacity-50`}
     >
       <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
     </button>
@@ -190,7 +186,7 @@ function Stepper({
       <button
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={disabled || value <= min}
-        className="h-7 w-7 rounded-full border border-neutral-300 text-lg leading-none disabled:opacity-30"
+        className="h-7 w-7 rounded-full border border-sb-line bg-sb-card text-lg leading-none disabled:opacity-30"
       >
         −
       </button>
@@ -198,7 +194,7 @@ function Stepper({
       <button
         onClick={() => onChange(Math.min(max, value + 1))}
         disabled={disabled || value >= max}
-        className="h-7 w-7 rounded-full border border-neutral-300 text-lg leading-none disabled:opacity-30"
+        className="h-7 w-7 rounded-full border border-sb-line bg-sb-card text-lg leading-none disabled:opacity-30"
       >
         +
       </button>
@@ -208,9 +204,9 @@ function Stepper({
 
 function Centered({ children, onDone }: { children: React.ReactNode; onDone: () => void }) {
   return (
-    <div className="mx-auto mt-24 max-w-md px-6 text-center text-neutral-600">
+    <div className="mx-auto mt-24 max-w-md px-6 text-center text-sb-muted">
       {children}
-      <button onClick={onDone} className="mt-4 block w-full text-neutral-500 underline">
+      <button onClick={onDone} className="mt-4 block w-full text-sb-muted underline">
         back home
       </button>
     </div>

@@ -17,9 +17,9 @@ const DOCS: Record<LegalDoc, string> = {
  */
 export default function LegalPage({ doc, onBack }: { doc: LegalDoc; onBack: () => void }) {
   return (
-    <div className="mx-auto mt-10 w-full max-w-md px-5 pb-16 text-sm text-neutral-800">
-      <button onClick={onBack} className="mb-4 text-sm text-neutral-500 hover:text-neutral-800">
-        ← back
+    <div className="mx-auto mt-8 w-full max-w-md px-5 pb-16 text-sm text-sb-ink">
+      <button onClick={onBack} className="mb-4 text-sm text-sb-muted hover:text-sb-ink">
+        ← назад · back
       </button>
       {renderMarkdown(DOCS[doc])}
     </div>
