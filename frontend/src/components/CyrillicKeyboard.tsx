@@ -71,17 +71,17 @@ export default function CyrillicKeyboard({
   };
 
   return (
-    <div className="select-none rounded-2xl bg-neutral-100 p-2">
-      <div className="mb-1 flex items-center justify-between px-1 text-xs text-neutral-500">
-        <span>{active === "jcuken" ? "ЙЦУКЕН" : "Phonetic"}</span>
-        <button onClick={toggle} className="rounded px-2 py-0.5 hover:bg-neutral-200">
-          switch layout
+    <div className="select-none rounded-2xl bg-sb-card2 p-2">
+      <div className="mb-1 flex items-center justify-between px-1 text-xs font-semibold text-sb-muted">
+        <span>{active === "jcuken" ? "ЙЦУКЕН · JCUKEN" : "Фонетическая · Phonetic"}</span>
+        <button onClick={toggle} className="rounded px-2 py-0.5 font-bold text-sb-accent hover:bg-sb-line">
+          сменить раскладку · switch
         </button>
       </div>
 
       <div className="relative">
         {hint && (
-          <div className="absolute -top-9 left-1/2 -translate-x-1/2 rounded-lg bg-neutral-900 px-3 py-1 text-sm text-white shadow">
+          <div className="absolute -top-9 left-1/2 -translate-x-1/2 rounded-lg bg-sb-ink px-3 py-1 text-sm text-white shadow">
             {hint}
           </div>
         )}
@@ -97,8 +97,8 @@ export default function CyrillicKeyboard({
                 onMouseLeave={endHold}
                 onTouchStart={() => startHold(ch)}
                 onTouchEnd={endHold}
-                className="h-11 min-w-[1.9rem] flex-1 rounded-lg bg-white text-lg shadow-sm
-                           active:bg-neutral-300 sm:min-w-[2.2rem]"
+                className="h-11 min-w-[1.9rem] flex-1 rounded-lg bg-sb-card text-lg shadow-sm
+                           active:bg-sb-line sm:min-w-[2.2rem]"
               >
                 {ch}
               </button>
@@ -109,16 +109,16 @@ export default function CyrillicKeyboard({
         <div className="flex justify-center gap-1">
           <button
             onClick={onBackspace}
-            className="h-11 flex-1 rounded-lg bg-white text-base shadow-sm active:bg-neutral-300"
+            className="h-11 flex-1 rounded-lg bg-sb-card text-base shadow-sm active:bg-sb-line"
           >
             ⌫
           </button>
           <button
             onClick={onSubmit}
-            className="h-11 flex-[2] rounded-lg bg-neutral-900 text-base font-medium text-white
-                       shadow-sm active:bg-neutral-700"
+            className="h-11 flex-[2] rounded-lg bg-sb-ink text-base font-bold text-white
+                       shadow-sm active:bg-black"
           >
-            Enter
+            Проверить · Check
           </button>
         </div>
       </div>

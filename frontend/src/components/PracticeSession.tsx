@@ -21,9 +21,9 @@ export default function PracticeSession({
 
   if (queue.length === 0)
     return (
-      <div className="mx-auto mt-24 max-w-md px-6 text-center text-neutral-600">
-        Practice done.
-        <button onClick={onDone} className="mt-4 block w-full text-neutral-500 underline">
+      <div className="mx-auto mt-24 max-w-md px-6 text-center text-sb-muted">
+        Практика завершена · Practice done.
+        <button onClick={onDone} className="mt-4 block w-full text-sb-muted underline">
           back
         </button>
       </div>
@@ -33,8 +33,12 @@ export default function PracticeSession({
   const isMeaning = cur.question_type === "meaning";
 
   const submit = async () => {
-    const res = await practice(cur.item_id, cur.question_type, input);
-    setFeedback({ correct: res.correct, expected: res.expected, stressed: res.stressed_form });
+    try {
+      const res = await practice(cur.item_id, cur.question_type, input);
+      setFeedback({ correct: res.correct, expected: res.expected, stressed: res.stressed_form });
+    } catch {
+      /* keep the input; the user can submit again */
+    }
   };
 
   const cont = () => {
@@ -48,16 +52,19 @@ export default function PracticeSession({
   };
 
   return (
-    <div className="mx-auto mt-12 w-full max-w-md px-5">
-      <p className="mb-3 text-center text-sm text-neutral-400">
+    <div className="mx-auto mt-10 w-full max-w-md px-5">
+      <p className="mb-3 text-center text-sm font-medium text-sb-muted">
         {title} · {queue.length} left
       </p>
 
-      <div className={`rounded-2xl p-6 text-center ${isMeaning ? "bg-sky-50" : "bg-amber-50"}`}>
-        <p className="mb-2 text-xs uppercase tracking-wide text-neutral-500">
-          {isMeaning ? "What does this mean?" : "Type in Russian"}
+      <div
+        key={`${cur.item_id}:${cur.question_type}`}
+        className={`sb-fade rounded-3xl p-7 text-center ${isMeaning ? "bg-sb-gold-soft" : "bg-sb-accent-soft"}`}
+      >
+        <p className="mb-2.5 text-xs font-bold uppercase tracking-wider text-sb-muted">
+          {isMeaning ? "Что это значит? · Meaning" : "Напишите по-русски · Type in Russian"}
         </p>
-        <div className="text-4xl">{cur.prompt}</div>
+        <div className="font-display text-4xl font-bold text-sb-ink">{cur.prompt}</div>
       </div>
 
       {feedback === null ? (
@@ -69,7 +76,7 @@ export default function PracticeSession({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.repeat && input && submit()}
               placeholder="english meaning"
-              className="w-full rounded-lg border border-neutral-300 px-3 py-3 text-center text-lg"
+              className="w-full rounded-xl border border-sb-line bg-sb-card px-3 py-3.5 text-center text-lg outline-none focus:border-sb-muted"
             />
           ) : (
             <ProductionInput value={input} onChange={setInput} onSubmit={() => input && submit()} />
@@ -78,35 +85,35 @@ export default function PracticeSession({
             <button
               onClick={() => input && submit()}
               disabled={!input}
-              className="mt-3 w-full rounded-lg bg-neutral-900 py-2 font-medium text-white disabled:opacity-40"
+              className="mt-3 w-full rounded-xl bg-sb-ink py-3 font-bold text-white disabled:opacity-40"
             >
-              Check
+              Проверить · Check
             </button>
           )}
         </div>
       ) : (
         <div className="mt-5 text-center">
           <div
-            className={`rounded-lg px-4 py-3 text-lg font-medium ${
-              feedback.correct ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+            className={`rounded-xl px-4 py-3 text-lg font-bold ${
+              feedback.correct ? "bg-[#DCEFE0] text-[#2E6B45]" : "bg-[#F5DAD8] text-[#A83B33]"
             }`}
           >
-            {feedback.correct ? "Correct" : "Not quite"}
+            {feedback.correct ? "Верно · Correct" : "Не совсем · Not quite"}
           </div>
-          <div className="mt-4 text-3xl">{feedback.stressed}</div>
-          <div className="mt-1 text-neutral-600">{feedback.expected}</div>
+          <div className="mt-4 font-display text-4xl font-bold text-sb-ink">{feedback.stressed}</div>
+          <div className="mt-1 text-sb-muted">{feedback.expected}</div>
           <button
             autoFocus
             onClick={cont}
-            className="mt-6 w-full rounded-lg bg-neutral-900 py-2 font-medium text-white"
+            className="mt-6 w-full rounded-xl bg-sb-ink py-3 font-bold text-white"
           >
-            Continue
+            Дальше · Continue
           </button>
         </div>
       )}
 
-      <button onClick={onDone} className="mt-4 block w-full text-center text-sm text-neutral-400">
-        end practice
+      <button onClick={onDone} className="mt-4 block w-full text-center text-sm text-sb-muted hover:text-sb-ink">
+        завершить · end practice
       </button>
     </div>
   );

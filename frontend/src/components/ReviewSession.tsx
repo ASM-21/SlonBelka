@@ -108,7 +108,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
     if (pending > 0) notes.push(`${pending} answered offline. They'll sync when you're back online.`);
     return (
       <SessionSummary
-        title={endedEarly ? "Session ended" : "Reviews complete"}
+        title={endedEarly ? "Сессия завершена · Session ended" : "Повторения завершены · Reviews done"}
         subtitle="A word counts once both its questions are cleared."
         stats={[
           { label: "Words cleared", value: String(clearedCount) },
@@ -204,33 +204,35 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
         <button
           onClick={exitSession}
           aria-label="End session"
-          className="h-9 w-9 shrink-0 rounded-lg bg-neutral-100 text-base text-neutral-600 hover:bg-neutral-200"
+          className="h-9 w-9 shrink-0 rounded-xl bg-sb-card2 text-base text-sb-ink hover:bg-sb-line"
         >
           ✕
         </button>
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-neutral-200">
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2">
           <div
-            className="h-full rounded-full bg-neutral-900 transition-all"
+            className="h-full rounded-full bg-sb-accent transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
-        <span className="shrink-0 text-sm text-neutral-400">
+        <span className="shrink-0 text-sm font-medium text-sb-muted">
           {queue.length} left{pending > 0 ? ` · ${pending} to sync` : ""}
         </span>
       </div>
 
       <div key={`${cur.item_id}:${cur.question_type}`} className="sb-fade">
-        <div className={`rounded-2xl p-6 text-center ${isMeaning ? "bg-sky-50" : "bg-amber-50"}`}>
-          <p className="mb-2 text-xs uppercase tracking-wide text-neutral-500">
-            {isMeaning ? "What does this mean?" : "Type in Russian"}
+        <div
+          className={`rounded-3xl p-7 text-center ${isMeaning ? "bg-sb-gold-soft" : "bg-sb-accent-soft"}`}
+        >
+          <p className="mb-2.5 text-xs font-bold uppercase tracking-wider text-sb-muted">
+            {isMeaning ? "Что это значит? · Meaning" : "Напишите по-русски · Type in Russian"}
           </p>
-          <div className="text-4xl">{cur.prompt}</div>
+          <div className="font-display text-4xl font-bold text-sb-ink">{cur.prompt}</div>
           {isMeaning && cur.audio_url && (
             <button
               onClick={() => new Audio(cur.audio_url!).play()}
-              className="mt-3 rounded-full bg-white px-3 py-1 text-sm shadow"
+              className="mt-3.5 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-sb-ink shadow"
             >
-              ▶ play
+              ▶ прослушать · play
             </button>
           )}
         </div>
@@ -247,7 +249,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
                 }}
                 onKeyDown={(e) => e.key === "Enter" && !e.repeat && input && send(false)}
                 placeholder="english meaning"
-                className="w-full rounded-lg border border-neutral-300 px-3 py-3 text-center text-lg"
+                className="w-full rounded-xl border border-sb-line bg-sb-card px-3 py-3.5 text-center text-lg outline-none focus:border-sb-muted"
               />
             ) : (
               <ProductionInput
@@ -261,10 +263,10 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
             )}
 
             {nearMiss && (
-              <div className="mt-3 flex items-center justify-between rounded-lg bg-yellow-100 px-3 py-2 text-sm">
-                <span>Close. Try again,</span>
-                <button onClick={() => send(true)} className="font-medium underline">
-                  or mark correct
+              <div className="mt-3 flex items-center justify-between rounded-xl bg-sb-gold-soft px-3.5 py-2.5 text-sm text-[#7A5F1E]">
+                <span>Почти! Попробуйте ещё · Almost!</span>
+                <button onClick={() => send(true)} className="font-bold underline">
+                  засчитать · accept
                 </button>
               </div>
             )}
@@ -273,23 +275,23 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
               <button
                 onClick={() => input && send(false)}
                 disabled={!input}
-                className="mt-3 w-full rounded-lg bg-neutral-900 py-2 font-medium text-white disabled:opacity-40"
+                className="mt-3 w-full rounded-xl bg-sb-ink py-3 font-bold text-white disabled:opacity-40"
               >
-                Submit
+                Проверить · Check
               </button>
             )}
           </div>
         ) : phase === "offline" ? (
           <div className="mt-5 text-center">
-            <div className="rounded-lg bg-amber-100 px-4 py-3 text-amber-800">
+            <div className="rounded-xl bg-sb-gold-soft px-4 py-3 text-[#7A5F1E]">
               Saved offline. It will sync when you reconnect.
             </div>
             <button
               autoFocus
               onClick={contOffline}
-              className="mt-6 w-full rounded-lg bg-neutral-900 py-2 font-medium text-white"
+              className="mt-6 w-full rounded-xl bg-sb-ink py-3 font-bold text-white"
             >
-              Continue
+              Дальше · Continue
             </button>
           </div>
         ) : (
@@ -297,25 +299,27 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
             <input
               disabled
               value={input}
-              className={`w-full rounded-lg border-2 px-3 py-3 text-center ${
+              className={`w-full rounded-xl border-2 px-3 py-3 text-center ${
                 isMeaning ? "text-lg" : "text-2xl"
               } ${
                 result?.correct
-                  ? "border-emerald-500 bg-emerald-50 text-emerald-900"
-                  : "border-red-500 bg-red-50 text-red-900"
+                  ? "border-[#2E6B45] bg-[#DCEFE0] text-[#2E6B45]"
+                  : "border-[#A83B33] bg-[#F5DAD8] text-[#A83B33]"
               }`}
             />
             <p
-              className={`mt-2 text-sm font-medium ${
-                result?.correct ? "text-emerald-700" : "text-red-700"
+              className={`mt-2 text-sm font-bold ${
+                result?.correct ? "text-[#2E6B45]" : "text-[#A83B33]"
               }`}
             >
-              {result?.correct ? "Correct" : "Not quite"}
+              {result?.correct ? "Верно · Correct" : "Не совсем · Not quite"}
             </p>
-            <div className="mt-3 text-3xl">{result?.stressed_form}</div>
-            <div className="mt-1 text-neutral-600">{result?.expected}</div>
+            <div className="mt-3 font-display text-4xl font-bold text-sb-ink">{result?.stressed_form}</div>
+            <div className="mt-1 text-sb-muted">{result?.expected}</div>
             {result && <StageChip r={result} />}
-            {result?.passed && <div className="mt-2 text-sm text-green-700">Reached Guru</div>}
+            {result?.passed && (
+              <div className="mt-2 text-sm font-semibold text-sb-gold">Гуру! · Reached Guru</div>
+            )}
             {isMeaning && result && !result.correct && input.trim() && (
               synAdded ? (
                 <p className="mt-3 text-sm text-emerald-600">Added "{input.trim()}" as a synonym.</p>
@@ -329,15 +333,15 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
                       /* button stays for another try */
                     }
                   }}
-                  className="mt-3 text-sm text-neutral-600 underline hover:text-neutral-900"
+                  className="mt-3 text-sm text-sb-muted underline hover:text-sb-ink"
                 >
                   Accept "{input.trim()}" next time
                 </button>
               )
             )}
             {result?.leveled_up && (
-              <div className="mt-3 rounded-lg bg-emerald-100 px-3 py-2 text-sm font-medium text-emerald-800">
-                Level up. You are now level {result.current_level}.
+              <div className="mt-3 rounded-xl bg-sb-accent-soft px-3 py-2.5 text-sm font-bold text-sb-accent">
+                Новый уровень! · Level up! You are now level {result.current_level}.
               </div>
             )}
 
@@ -346,18 +350,18 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
             ) : (
               <button
                 onClick={() => setShowInfo(true)}
-                className="mt-3 text-sm text-neutral-500 underline hover:text-neutral-800"
+                className="mt-3 text-sm text-sb-muted underline hover:text-sb-ink"
               >
-                Show details
+                Подробнее · Show details
               </button>
             )}
 
             <button
               autoFocus
               onClick={cont}
-              className="mt-6 w-full rounded-lg bg-neutral-900 py-2 font-medium text-white"
+              className="mt-6 w-full rounded-xl bg-sb-ink py-3 font-bold text-white"
             >
-              Continue
+              Дальше · Continue
             </button>
           </div>
         )}

@@ -23,6 +23,12 @@
   --sb-burned: #26251f;
 }
 
+@layer base {
+  body {
+    @apply bg-sb-bg text-sb-ink antialiased;
+  }
+}
+
 @keyframes sb-fade {
   from {
     opacity: 0;

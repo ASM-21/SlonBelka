@@ -31,7 +31,7 @@ export default function App() {
   // (the signup checkbox links to them).
   if (legalDoc)
     return (
-      <main className="min-h-screen bg-neutral-50 text-neutral-900">
+      <main className="min-h-screen bg-sb-bg text-sb-ink">
         <LegalPage doc={legalDoc} onBack={() => setLegalDoc(null)} />
       </main>
     );
@@ -50,7 +50,7 @@ export default function App() {
   const home = () => setView("home");
 
   return (
-    <main className="min-h-screen bg-neutral-50 text-neutral-900">
+    <main className="min-h-screen bg-sb-bg text-sb-ink">
       {view === "home" && (
         <Home
           onStartLessons={() => setView("lessons")}

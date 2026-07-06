@@ -61,7 +61,7 @@ export default function ProductionInput({
         autoCorrect="off"
         spellCheck={false}
         placeholder="…"
-        className="mb-3 w-full rounded-lg border border-neutral-300 px-3 py-3 text-center text-2xl"
+        className="mb-3 w-full rounded-xl border border-sb-line bg-sb-card px-3 py-3 text-center text-2xl outline-none focus:border-sb-muted"
       />
       <CyrillicKeyboard
         onKey={insert}

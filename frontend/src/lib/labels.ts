@@ -14,6 +14,16 @@ export const BAND_LABELS: Record<string, string> = {
   burned: "Burned",
 };
 
+// Russian band names as used in the design's stats breakdown (long ones
+// abbreviated the same way the mock abbreviates them).
+export const BAND_LABELS_RU: Record<string, string> = {
+  apprentice: "Ученик",
+  guru: "Гуру",
+  master: "Мастер",
+  enlightened: "Просветл.",
+  burned: "Сожжён.",
+};
+
 // Named bands of ten levels for the dictionary grid (WaniKani-style).
 // Placeholder names, adjust to taste; levels past the last band reuse it.
 export const LEVEL_BANDS: { ru: string; en: string }[] = [
