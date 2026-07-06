@@ -319,6 +319,18 @@ export const browseItems = (params: {
   return api<ItemBrowseResponse>(`/items?${q.toString()}`);
 };
 
+export interface LevelSummary {
+  level: number;
+  total: number;
+  guru: number;
+  threshold: number;
+  cleared: boolean;
+  accessible: boolean;
+  current: boolean;
+}
+
+export const getLevels = () => api<LevelSummary[]>("/items/levels");
+
 export const getItem = (id: number) => api<ItemDetail>(`/items/${id}`);
 
 export const addSynonym = (itemId: number, text: string) =>

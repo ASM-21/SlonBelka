@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { extraStudy, ReviewItem } from "../lib/api";
+import { useEffect, useState } from "react";
+import { extraStudy, getLevels, ReviewItem } from "../lib/api";
+import { useFetch } from "../lib/useFetch";
 import PracticeSession from "./PracticeSession";
 
 const MODES = [
   { id: "recent_mistakes", label: "Recent mistakes", blurb: "Words you've missed lately" },
   { id: "recently_learned", label: "Recently learned", blurb: "Your newest words" },
+  { id: "burned", label: "Burned words", blurb: "Practice retired words without unburning them" },
   { id: "level", label: "By level", blurb: "Drill an entire level" },
 ];
 
@@ -14,6 +16,13 @@ export default function ExtraStudyPage({ onDone }: { onDone: () => void }) {
   const [level, setLevel] = useState(1);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const levels = useFetch(getLevels);
+
+  // Default the level picker to the user's current level once known.
+  const currentLevel = levels.data?.find((lv) => lv.current)?.level;
+  useEffect(() => {
+    if (currentLevel) setLevel(currentLevel);
+  }, [currentLevel]);
 
   if (studySet) {
     return <PracticeSession items={studySet} title={title} onDone={() => setStudySet(null)} />;
@@ -79,8 +88,8 @@ export default function ExtraStudyPage({ onDone }: { onDone: () => void }) {
               onChange={(e) => setLevel(Number(e.target.value))}
               className="rounded-lg border border-neutral-300 px-2 py-1 text-sm"
             >
-              {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>Level {n}</option>
+              {(levels.data ?? [{ level }]).map((lv) => (
+                <option key={lv.level} value={lv.level}>Level {lv.level}</option>
               ))}
             </select>
             <button

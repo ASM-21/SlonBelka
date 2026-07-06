@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { addSynonym, browseItems, getItem, removeSynonym, resurrect } from "../lib/api";
-import { useFetch } from "../lib/useFetch";
+import { addSynonym, browseItems, getItem, getLevels, LevelSummary, removeSynonym, resurrect } from "../lib/api";
+import { LEVEL_BANDS } from "../lib/labels";
+import { Fetch, useFetch } from "../lib/useFetch";
 
 const STATUS_STYLE: Record<string, string> = {
   locked: "bg-neutral-200 text-neutral-500",
@@ -22,6 +23,8 @@ export default function ItemBrowser({ onDone }: { onDone: () => void }) {
   const [pos, setPos] = useState("");
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [view, setView] = useState<"levels" | "list">("levels");
+  const levels = useFetch(getLevels);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 250);
@@ -73,75 +76,182 @@ export default function ItemBrowser({ onDone }: { onDone: () => void }) {
 
       <input
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          if (e.target.value) setView("list");
+        }}
         placeholder="search word or meaning"
         className="w-full rounded-lg border border-neutral-300 px-3 py-2"
       />
 
-      <div className="mt-3 flex gap-2">
-        <select
-          value={level}
-          onChange={(e) => setLevel(e.target.value === "" ? "" : Number(e.target.value))}
-          className="flex-1 rounded-lg border border-neutral-300 px-2 py-2 text-sm"
-        >
-          <option value="">All levels</option>
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-            <option key={n} value={n}>Level {n}</option>
-          ))}
-        </select>
-        <select
-          value={pos}
-          onChange={(e) => setPos(e.target.value)}
-          className="flex-1 rounded-lg border border-neutral-300 px-2 py-2 text-sm"
-        >
-          {POS_OPTIONS.map((p) => (
-            <option key={p} value={p}>{p === "" ? "All types" : p}</option>
-          ))}
-        </select>
-      </div>
+      {view === "levels" ? (
+        <LevelGrid
+          levels={levels}
+          onPick={(n) => {
+            setLevel(n);
+            setView("list");
+          }}
+          onAll={() => {
+            setLevel("");
+            setView("list");
+          }}
+        />
+      ) : (
+        <>
+          <button
+            onClick={() => {
+              setView("levels");
+              setSearch("");
+              setLevel("");
+              setPos("");
+            }}
+            className="mt-3 text-sm text-neutral-500 hover:text-neutral-800"
+          >
+            ← levels
+          </button>
 
-      <p className="mt-3 text-xs text-neutral-400">{total} words</p>
-
-      <div className="mt-2 divide-y divide-neutral-100">
-        {list.status === "loading" ? (
-          <p className="py-8 text-center text-neutral-400">loading...</p>
-        ) : list.status === "error" ? (
-          <p className="py-8 text-center text-neutral-400">
-            Couldn't load words.{" "}
-            <button onClick={list.retry} className="font-medium text-neutral-700 underline">
-              Retry
-            </button>
-          </p>
-        ) : items.length === 0 ? (
-          <p className="py-8 text-center text-neutral-400">no matches</p>
-        ) : (
-          items.map((it) => (
-            <button
-              key={it.id}
-              onClick={() => setSelectedId(it.id)}
-              className="flex w-full items-center justify-between py-3 text-left hover:bg-neutral-50"
+          <div className="mt-2 flex gap-2">
+            <select
+              value={level}
+              onChange={(e) => setLevel(e.target.value === "" ? "" : Number(e.target.value))}
+              className="flex-1 rounded-lg border border-neutral-300 px-2 py-2 text-sm"
             >
-              <div className="min-w-0">
-                <div className="truncate text-lg">{it.stressed_form}</div>
-                <div className="truncate text-sm text-neutral-500">{it.translation_primary}</div>
-              </div>
-              <div className="ml-3 flex shrink-0 items-center gap-2">
-                <span className="text-xs text-neutral-400">L{it.level}</span>
-                <StatusBadge status={it.status} />
-              </div>
-            </button>
-          ))
-        )}
-      </div>
+              <option value="">All levels</option>
+              {(levels.data ?? []).map((lv) => (
+                <option key={lv.level} value={lv.level}>Level {lv.level}</option>
+              ))}
+            </select>
+            <select
+              value={pos}
+              onChange={(e) => setPos(e.target.value)}
+              className="flex-1 rounded-lg border border-neutral-300 px-2 py-2 text-sm"
+            >
+              {POS_OPTIONS.map((p) => (
+                <option key={p} value={p}>{p === "" ? "All types" : p}</option>
+              ))}
+            </select>
+          </div>
 
-      {items.length < total && (
-        <button
-          onClick={loadMore}
-          className="mt-4 w-full rounded-lg border border-neutral-200 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
-        >
-          Load more
-        </button>
+          <p className="mt-3 text-xs text-neutral-400">{total} words</p>
+
+          <div className="mt-2 divide-y divide-neutral-100">
+            {list.status === "loading" ? (
+              <p className="py-8 text-center text-neutral-400">loading...</p>
+            ) : list.status === "error" ? (
+              <p className="py-8 text-center text-neutral-400">
+                Couldn't load words.{" "}
+                <button onClick={list.retry} className="font-medium text-neutral-700 underline">
+                  Retry
+                </button>
+              </p>
+            ) : items.length === 0 ? (
+              <p className="py-8 text-center text-neutral-400">no matches</p>
+            ) : (
+              items.map((it) => (
+                <button
+                  key={it.id}
+                  onClick={() => setSelectedId(it.id)}
+                  className="flex w-full items-center justify-between py-3 text-left hover:bg-neutral-50"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-lg">{it.stressed_form}</div>
+                    <div className="truncate text-sm text-neutral-500">{it.translation_primary}</div>
+                  </div>
+                  <div className="ml-3 flex shrink-0 items-center gap-2">
+                    <span className="text-xs text-neutral-400">L{it.level}</span>
+                    <StatusBadge status={it.status} />
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+
+          {items.length < total && (
+            <button
+              onClick={loadMore}
+              className="mt-4 w-full rounded-lg border border-neutral-200 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
+            >
+              Load more
+            </button>
+          )}
+        </>
       )}
+    </div>
+  );
+}
+
+function LevelGrid({
+  levels,
+  onPick,
+  onAll,
+}: {
+  levels: Fetch<LevelSummary[]>;
+  onPick: (level: number) => void;
+  onAll: () => void;
+}) {
+  if (levels.status === "loading")
+    return <p className="py-8 text-center text-neutral-400">loading levels...</p>;
+  if (levels.status === "error" || !levels.data)
+    return (
+      <p className="py-8 text-center text-neutral-400">
+        Couldn't load levels.{" "}
+        <button onClick={levels.retry} className="font-medium text-neutral-700 underline">
+          Retry
+        </button>
+      </p>
+    );
+
+  // Group into bands of ten levels, each with its themed name.
+  const bands = new Map<number, LevelSummary[]>();
+  for (const lv of levels.data) {
+    const b = Math.floor((lv.level - 1) / 10);
+    if (!bands.has(b)) bands.set(b, []);
+    bands.get(b)!.push(lv);
+  }
+
+  return (
+    <div className="mt-4">
+      {[...bands.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([bandIdx, lvls]) => {
+          const name = LEVEL_BANDS[Math.min(bandIdx, LEVEL_BANDS.length - 1)];
+          return (
+            <div key={bandIdx} className="mb-5">
+              <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-400">
+                {name.ru} · {name.en}
+              </h3>
+              <div className="grid grid-cols-5 gap-2">
+                {lvls.map((lv) => (
+                  <button
+                    key={lv.level}
+                    onClick={() => onPick(lv.level)}
+                    className={`rounded-xl border p-2 text-center hover:bg-neutral-50 ${
+                      lv.current ? "border-neutral-900" : "border-neutral-200"
+                    } ${lv.accessible ? "" : "opacity-50"}`}
+                  >
+                    <div className="text-lg font-semibold">{lv.level}</div>
+                    <div className="text-[10px] text-neutral-500">
+                      {lv.accessible ? (
+                        <>
+                          {lv.cleared && <span className="text-emerald-600">✓ </span>}
+                          {lv.guru}/{lv.total}
+                        </>
+                      ) : (
+                        <>🔒 {lv.total}</>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      <button
+        onClick={onAll}
+        className="mt-1 w-full rounded-lg border border-neutral-200 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
+      >
+        All words
+      </button>
     </div>
   );
 }

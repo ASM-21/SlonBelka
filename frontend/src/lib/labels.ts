@@ -13,3 +13,16 @@ export const BAND_LABELS: Record<string, string> = {
   enlightened: "Enlightened",
   burned: "Burned",
 };
+
+// Named bands of ten levels for the dictionary grid (WaniKani-style).
+// Placeholder names, adjust to taste; levels past the last band reuse it.
+export const LEVEL_BANDS: { ru: string; en: string }[] = [
+  { ru: "Росток", en: "Sprout" },
+  { ru: "Орех", en: "Nut" },
+  { ru: "Белка", en: "Squirrel" },
+  { ru: "Слон", en: "Elephant" },
+  { ru: "Память", en: "Memory" },
+];
+
+export const levelBand = (level: number) =>
+  LEVEL_BANDS[Math.min(Math.floor((level - 1) / 10), LEVEL_BANDS.length - 1)];
