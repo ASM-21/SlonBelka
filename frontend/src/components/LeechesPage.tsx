@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getLeeches, Leech, leechStudy, ReviewItem, saveMnemonic } from "../lib/api";
+import { LEECH_LABEL } from "../lib/labels";
 import { useFetch } from "../lib/useFetch";
 import PracticeSession from "./PracticeSession";
 
@@ -9,7 +10,7 @@ export default function LeechesPage({ onDone }: { onDone: () => void }) {
   const [note, setNote] = useState<string | null>(null);
 
   if (studySet) {
-    return <PracticeSession items={studySet} title="Leech training" onDone={() => setStudySet(null)} />;
+    return <PracticeSession items={studySet} title={LEECH_LABEL} onDone={() => setStudySet(null)} />;
   }
 
   if (status === "loading") return <Centered>loading...</Centered>;
@@ -29,14 +30,14 @@ export default function LeechesPage({ onDone }: { onDone: () => void }) {
   return (
     <div className="mx-auto mt-12 w-full max-w-md px-5">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Leeches</h2>
+        <h2 className="text-2xl font-semibold">{LEECH_LABEL}</h2>
         <button onClick={onDone} className="text-sm text-neutral-400 hover:text-neutral-700">
           back
         </button>
       </div>
 
       {leeches.length === 0 ? (
-        <Centered>No leeches right now. Words you keep missing will show up here.</Centered>
+        <Centered>No tricky words right now. Words you keep missing will show up here.</Centered>
       ) : (
         <>
           <button

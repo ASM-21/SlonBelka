@@ -320,7 +320,7 @@ function Detail({ id, onBack }: { id: number; onBack: () => void }) {
             <Cell label="Wrong" value={String(item.state.incorrect_count)} />
           </div>
           {item.state.is_leech && (
-            <p className="mt-2 text-center text-xs text-rose-600">flagged as a leech</p>
+            <p className="mt-2 text-center text-xs text-rose-600">flagged as a tricky word</p>
           )}
         </Section>
       )}

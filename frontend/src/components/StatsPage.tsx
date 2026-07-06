@@ -1,4 +1,5 @@
 import { getStats } from "../lib/api";
+import { BAND_LABELS } from "../lib/labels";
 import { useFetch } from "../lib/useFetch";
 
 const BAND_COLOR: Record<string, string> = {
@@ -74,7 +75,7 @@ export default function StatsPage({ onDone }: { onDone: () => void }) {
       <div className="space-y-2">
         {Object.entries(s.srs_distribution).map(([band, n]) => (
           <div key={band} className="flex items-center gap-2 text-sm">
-            <span className="w-24 capitalize text-neutral-600">{band}</span>
+            <span className="w-24 text-neutral-600">{BAND_LABELS[band] ?? band}</span>
             <div className="h-4 flex-1 overflow-hidden rounded bg-neutral-100">
               <div
                 className={`h-full ${BAND_COLOR[band] ?? "bg-neutral-400"}`}

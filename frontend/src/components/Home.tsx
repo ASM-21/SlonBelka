@@ -1,4 +1,5 @@
 import { getDashboard, logout as apiLogout } from "../lib/api";
+import { BAND_LABELS, LEECH_LABEL } from "../lib/labels";
 import { useFetch } from "../lib/useFetch";
 
 export default function Home({
@@ -71,22 +72,22 @@ export default function Home({
 
       <div className="grid grid-cols-2 gap-4">
         <Tile label="Lessons" count={d?.lessons_available} color="bg-sky-100 text-sky-900" onClick={onStartLessons} />
-        <Tile label="Reviews" count={d?.reviews_due} color="bg-amber-100 text-amber-900" onClick={onStartReviews} />
-      </div>
-
-      <div className="mt-6 grid grid-cols-3 gap-3 text-center">
-        <Stat label="Streak" value={d ? `${d.streak}d` : "-"} />
-        <Stat label="Accuracy" value={d?.accuracy != null ? `${Math.round(d.accuracy * 100)}%` : "-"} />
-        <Stat label="Next 24h" value={d ? `${d.reviews_upcoming_24h}` : "-"} />
+        <Tile
+          label="Reviews"
+          count={d?.reviews_due}
+          caption={d && d.reviews_upcoming_24h > 0 ? `+${d.reviews_upcoming_24h} in 24h` : undefined}
+          color="bg-amber-100 text-amber-900"
+          onClick={onStartReviews}
+        />
       </div>
 
       {d && (
-        <div className="mt-6 flex justify-between rounded-xl bg-neutral-100 px-4 py-3 text-center text-xs text-neutral-600">
-          <Band label="Appr" n={d.srs_counts.apprentice} />
-          <Band label="Guru" n={d.srs_counts.guru} />
-          <Band label="Master" n={d.srs_counts.master} />
-          <Band label="Enl" n={d.srs_counts.enlightened} />
-          <Band label="Burned" n={d.srs_counts.burned} />
+        <div className="mt-6 grid grid-cols-5 gap-1 rounded-xl bg-neutral-100 px-2 py-3 text-center text-neutral-600">
+          <Band label={BAND_LABELS.apprentice} n={d.srs_counts.apprentice} />
+          <Band label={BAND_LABELS.guru} n={d.srs_counts.guru} />
+          <Band label={BAND_LABELS.master} n={d.srs_counts.master} />
+          <Band label={BAND_LABELS.enlightened} n={d.srs_counts.enlightened} />
+          <Band label={BAND_LABELS.burned} n={d.srs_counts.burned} />
         </div>
       )}
 
@@ -94,7 +95,7 @@ export default function Home({
         onClick={onOpenLeeches}
         className="mt-4 flex w-full items-center justify-between rounded-xl border border-neutral-200 px-4 py-3 text-left hover:bg-neutral-50"
       >
-        <span className="text-sm font-medium">Leeches</span>
+        <span className="text-sm font-medium">{LEECH_LABEL}</span>
         <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs text-rose-700">
           {d?.leech_count ?? 0}
         </span>
@@ -147,11 +148,13 @@ export default function Home({
 function Tile({
   label,
   count,
+  caption,
   color,
   onClick,
 }: {
   label: string;
   count: number | undefined;
+  caption?: string;
   color: string;
   onClick: () => void;
 }) {
@@ -164,16 +167,8 @@ function Tile({
     >
       <span className="text-4xl font-bold">{count ?? "-"}</span>
       <span className="mt-1 text-sm">{label}</span>
+      {caption && <span className="mt-0.5 text-xs opacity-70">{caption}</span>}
     </button>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-neutral-200 py-3">
-      <div className="text-xl font-semibold">{value}</div>
-      <div className="text-xs text-neutral-500">{label}</div>
-    </div>
   );
 }
 
@@ -181,7 +176,7 @@ function Band({ label, n }: { label: string; n: number }) {
   return (
     <div>
       <div className="text-sm font-semibold text-neutral-800">{n}</div>
-      <div>{label}</div>
+      <div className="text-[10px]">{label}</div>
     </div>
   );
 }
