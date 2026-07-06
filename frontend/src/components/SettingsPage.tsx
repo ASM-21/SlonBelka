@@ -2,8 +2,15 @@ import { useState } from "react";
 import { getSettings, Settings, setVacation, updateSettings } from "../lib/api";
 import { enableReminders, pushSupported } from "../lib/push";
 import { useFetch } from "../lib/useFetch";
+import { LegalDoc } from "./LegalPage";
 
-export default function SettingsPage({ onDone }: { onDone: () => void }) {
+export default function SettingsPage({
+  onDone,
+  onShowLegal,
+}: {
+  onDone: () => void;
+  onShowLegal: (doc: LegalDoc) => void;
+}) {
   const { status, data: s, setData: setS, retry } = useFetch(getSettings);
   const [saving, setSaving] = useState(false);
   const [reminderMsg, setReminderMsg] = useState<string | null>(null);
@@ -112,6 +119,30 @@ export default function SettingsPage({ onDone }: { onDone: () => void }) {
           </p>
         )}
         {reminderMsg && <p className="mt-2 text-sm text-neutral-600">{reminderMsg}</p>}
+      </div>
+
+      <div className="mt-4 rounded-xl border border-neutral-200 p-4">
+        <div className="font-medium">Legal</div>
+        <div className="mt-2 flex flex-col items-start gap-2 text-sm">
+          <button
+            onClick={() => onShowLegal("terms")}
+            className="text-neutral-600 underline hover:text-neutral-900"
+          >
+            Terms of Service
+          </button>
+          <button
+            onClick={() => onShowLegal("privacy")}
+            className="text-neutral-600 underline hover:text-neutral-900"
+          >
+            Privacy Policy
+          </button>
+          <button
+            onClick={() => onShowLegal("licenses")}
+            className="text-neutral-600 underline hover:text-neutral-900"
+          >
+            Content licenses and attribution
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -33,7 +33,9 @@ def client():
 @pytest.fixture()
 def auth(client):
     """Register a user and return an auth headers dict."""
-    r = client.post("/auth/register", json={"email": "t@e.com", "password": "password123"})
+    r = client.post("/auth/register", json={
+        "email": "t@e.com", "password": "password123", "accepted_terms": True,
+    })
     assert r.status_code == 201, r.text
     token = r.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

@@ -1,13 +1,21 @@
 import { useState } from "react";
 import { forgotPassword, login, register, resetPassword, token } from "../lib/api";
+import { LegalDoc } from "./LegalPage";
 
 type Mode = "login" | "register" | "forgot" | "reset";
 
-export default function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
+export default function AuthScreen({
+  onAuthed,
+  onShowLegal,
+}: {
+  onAuthed: () => void;
+  onShowLegal: (doc: LegalDoc) => void;
+}) {
   const [mode, setMode] = useState<Mode>("register");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [resetToken, setResetToken] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -22,8 +30,8 @@ export default function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
     reset();
     try {
       if (mode === "register" || mode === "login") {
-        const fn = mode === "register" ? register : login;
-        const { access_token, refresh_token } = await fn(email, password);
+        const { access_token, refresh_token } =
+          mode === "register" ? await register(email, password, agreed) : await login(email, password);
         token.set(access_token, refresh_token);
         onAuthed();
       } else if (mode === "forgot") {
@@ -51,7 +59,9 @@ export default function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
       ? !!email
       : mode === "reset"
         ? !!resetToken && password.length >= 8
-        : !!email && !!password;
+        : mode === "register"
+          ? !!email && !!password && agreed
+          : !!email && !!password;
 
   return (
     <div className="mx-auto mt-24 w-full max-w-sm px-6">
@@ -85,6 +95,35 @@ export default function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
             onKeyDown={(e) => e.key === "Enter" && canSubmit && submit()}
             className="rounded-lg border border-neutral-300 px-3 py-2"
           />
+        )}
+
+        {mode === "register" && (
+          <label className="flex items-start gap-2 text-sm text-neutral-600">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-neutral-900"
+            />
+            <span>
+              I agree to the{" "}
+              <button
+                type="button"
+                onClick={() => onShowLegal("terms")}
+                className="underline hover:text-neutral-900"
+              >
+                Terms of Service
+              </button>{" "}
+              and{" "}
+              <button
+                type="button"
+                onClick={() => onShowLegal("privacy")}
+                className="underline hover:text-neutral-900"
+              >
+                Privacy Policy
+              </button>
+            </span>
+          </label>
         )}
 
         {error && <p className="text-sm text-red-600">{error}</p>}

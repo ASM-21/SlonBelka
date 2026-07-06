@@ -25,6 +25,7 @@ from app.security import decode_access_token, hash_password, verify_password
 from app.services import auth as auth_service
 from app.services import email as email_service
 from app.services.ratelimit import rate_limit
+from app.timeutil import utcnow
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 _bearer = HTTPBearer(auto_error=True)
@@ -53,9 +54,18 @@ def current_user(
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED,
              dependencies=[Depends(_register_limit)])
 def register(body: RegisterRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    if not body.accepted_terms:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "You must accept the Terms of Service and Privacy Policy",
+        )
     if db.scalar(select(User).where(User.email == body.email)):
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
-    user = User(email=body.email, password_hash=hash_password(body.password))
+    user = User(
+        email=body.email,
+        password_hash=hash_password(body.password),
+        tos_accepted_at=utcnow(),
+    )
     db.add(user)
     db.commit()
     db.refresh(user)

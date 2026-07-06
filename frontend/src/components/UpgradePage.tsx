@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { BillingStatus, billingPortal, checkout, getBillingStatus } from "../lib/api";
 
+// Display prices only; Stripe charges what the configured price IDs say.
+// PLACEHOLDER values: update to the real Stripe amounts before launch.
 const PLANS = [
-  { id: "monthly", name: "Monthly", blurb: "Billed every month" },
-  { id: "yearly", name: "Yearly", blurb: "Best value, billed annually" },
-  { id: "lifetime", name: "Lifetime", blurb: "One payment, forever" },
+  { id: "monthly", name: "Monthly", blurb: "Billed every month", price: "$5", cadence: "/ month" },
+  { id: "yearly", name: "Yearly", blurb: "Best value, billed annually", price: "$48", cadence: "/ year" },
+  { id: "lifetime", name: "Lifetime", blurb: "One payment, forever", price: "$120", cadence: "once" },
 ];
 
 export default function UpgradePage({ onDone }: { onDone: () => void }) {
@@ -82,10 +84,18 @@ export default function UpgradePage({ onDone }: { onDone: () => void }) {
                   <div className="font-medium">{p.name}</div>
                   <div className="text-sm text-neutral-500">{p.blurb}</div>
                 </div>
-                <span className="text-neutral-400">→</span>
+                <span className="text-right">
+                  <span className="font-semibold">{p.price}</span>{" "}
+                  <span className="text-sm text-neutral-500">{p.cadence}</span>
+                </span>
               </button>
             ))}
           </div>
+          <p className="mt-4 text-xs leading-relaxed text-neutral-500">
+            Monthly and yearly plans renew automatically at the then-current price until you
+            cancel. Cancel anytime from Manage subscription on this screen; you keep access
+            through the end of the paid period. Lifetime is a single payment and never renews.
+          </p>
         </>
       )}
 

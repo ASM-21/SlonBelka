@@ -211,8 +211,11 @@ interface TokenPair { access_token: string; refresh_token: string }
 // ---------- auth ----------
 export const getHealth = () => api<{ status: string; version: string }>("/health");
 
-export const register = (email: string, password: string) =>
-  api<TokenPair>("/auth/register", { method: "POST", body: JSON.stringify({ email, password }) });
+export const register = (email: string, password: string, acceptedTerms: boolean) =>
+  api<TokenPair>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ email, password, accepted_terms: acceptedTerms }),
+  });
 
 export const login = (email: string, password: string) =>
   api<TokenPair>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
