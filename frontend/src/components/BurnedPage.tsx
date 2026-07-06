@@ -1,19 +1,20 @@
-import { useEffect, useState } from "react";
-import { BurnedItem, getBurned, resurrect } from "../lib/api";
+import { useState } from "react";
+import { getBurned, resurrect } from "../lib/api";
+import { useFetch } from "../lib/useFetch";
 
 export default function BurnedPage({ onDone }: { onDone: () => void }) {
-  const [items, setItems] = useState<BurnedItem[] | null>(null);
+  const { status, data: items, setData: setItems, retry } = useFetch(getBurned);
   const [working, setWorking] = useState<number | null>(null);
-
-  useEffect(() => {
-    getBurned().then(setItems).catch(() => setItems([]));
-  }, []);
+  const [note, setNote] = useState<string | null>(null);
 
   const doResurrect = async (id: number) => {
     setWorking(id);
+    setNote(null);
     try {
       await resurrect(id);
       setItems((cur) => (cur ? cur.filter((i) => i.item_id !== id) : cur));
+    } catch {
+      setNote("Couldn't resurrect that word. Try again.");
     } finally {
       setWorking(null);
     }
@@ -31,8 +32,17 @@ export default function BurnedPage({ onDone }: { onDone: () => void }) {
         Retired words you've fully learned. Resurrect one to put it back into reviews at Apprentice 1.
       </p>
 
-      {items === null ? (
+      {note && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{note}</p>}
+
+      {status === "loading" ? (
         <p className="py-8 text-center text-neutral-400">loading...</p>
+      ) : status === "error" || items === null ? (
+        <p className="py-8 text-center text-neutral-400">
+          Couldn't load burned items.{" "}
+          <button onClick={retry} className="font-medium text-neutral-700 underline">
+            Retry
+          </button>
+        </p>
       ) : items.length === 0 ? (
         <p className="py-8 text-center text-neutral-400">Nothing burned yet. Keep going.</p>
       ) : (

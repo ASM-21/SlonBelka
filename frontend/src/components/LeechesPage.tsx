@@ -1,20 +1,30 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getLeeches, Leech, leechStudy, ReviewItem, saveMnemonic } from "../lib/api";
+import { useFetch } from "../lib/useFetch";
 import PracticeSession from "./PracticeSession";
 
 export default function LeechesPage({ onDone }: { onDone: () => void }) {
-  const [leeches, setLeeches] = useState<Leech[] | null>(null);
+  const { status, data: leeches, retry } = useFetch(getLeeches);
   const [studySet, setStudySet] = useState<ReviewItem[] | null>(null);
-
-  useEffect(() => {
-    getLeeches().then(setLeeches).catch(() => setLeeches([]));
-  }, []);
+  const [note, setNote] = useState<string | null>(null);
 
   if (studySet) {
     return <PracticeSession items={studySet} title="Leech training" onDone={() => setStudySet(null)} />;
   }
 
-  if (leeches === null) return <Centered>loading...</Centered>;
+  if (status === "loading") return <Centered>loading...</Centered>;
+  if (status === "error" || leeches === null)
+    return (
+      <Centered>
+        Couldn't load this page.
+        <button onClick={retry} className="mt-4 block w-full font-medium text-neutral-900 underline">
+          Retry
+        </button>
+        <button onClick={onDone} className="mt-2 block w-full text-neutral-500 underline">
+          back home
+        </button>
+      </Centered>
+    );
 
   return (
     <div className="mx-auto mt-12 w-full max-w-md px-5">
@@ -30,11 +40,18 @@ export default function LeechesPage({ onDone }: { onDone: () => void }) {
       ) : (
         <>
           <button
-            onClick={async () => setStudySet(await leechStudy())}
+            onClick={async () => {
+              try {
+                setStudySet(await leechStudy());
+              } catch {
+                setNote("Couldn't start the session. Try again.");
+              }
+            }}
             className="mb-4 w-full rounded-lg bg-neutral-900 py-2 font-medium text-white"
           >
             Study these {leeches.length}
           </button>
+          {note && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{note}</p>}
           <div className="flex flex-col gap-2">
             {leeches.map((l) => (
               <LeechRow key={l.item_id} leech={l} />

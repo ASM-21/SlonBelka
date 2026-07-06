@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Dashboard, getDashboard, logout as apiLogout } from "../lib/api";
+import { getDashboard, logout as apiLogout } from "../lib/api";
+import { useFetch } from "../lib/useFetch";
 
 export default function Home({
   onStartLessons,
@@ -24,11 +24,7 @@ export default function Home({
   onStats: () => void;
   onLogout: () => void;
 }) {
-  const [d, setD] = useState<Dashboard | null>(null);
-
-  useEffect(() => {
-    getDashboard().then(setD).catch(() => setD(null));
-  }, []);
+  const { status, data: d, retry } = useFetch(getDashboard);
 
   const logout = async () => {
     await apiLogout();
@@ -51,6 +47,15 @@ export default function Home({
           </button>
         </div>
       </div>
+
+      {status === "error" && (
+        <div className="mb-4 flex items-center justify-between rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <span>Couldn't load your dashboard.</span>
+          <button onClick={retry} className="font-medium underline">
+            Retry
+          </button>
+        </div>
+      )}
 
       {lp && (
         <div className="mb-6">

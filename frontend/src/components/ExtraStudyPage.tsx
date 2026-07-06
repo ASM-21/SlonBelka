@@ -30,6 +30,8 @@ export default function ExtraStudyPage({ onDone }: { onDone: () => void }) {
       }
       setTitle(label);
       setStudySet(items);
+    } catch {
+      setNote("Couldn't load that set. Try again.");
     } finally {
       setBusy(false);
     }

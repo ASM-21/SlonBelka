@@ -1,17 +1,26 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getSettings, Settings, setVacation, updateSettings } from "../lib/api";
 import { enableReminders, pushSupported } from "../lib/push";
+import { useFetch } from "../lib/useFetch";
 
 export default function SettingsPage({ onDone }: { onDone: () => void }) {
-  const [s, setS] = useState<Settings | null>(null);
+  const { status, data: s, setData: setS, retry } = useFetch(getSettings);
   const [saving, setSaving] = useState(false);
   const [reminderMsg, setReminderMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    getSettings().then(setS).catch(() => setS(null));
-  }, []);
-
-  if (!s) return <Centered onDone={onDone}>loading settings...</Centered>;
+  if (status === "loading") return <Centered onDone={onDone}>loading settings...</Centered>;
+  if (status === "error" || !s)
+    return (
+      <Centered onDone={onDone}>
+        Couldn't load settings.
+        <button
+          onClick={retry}
+          className="mt-4 w-full rounded-lg bg-neutral-900 py-2 font-medium text-white"
+        >
+          Retry
+        </button>
+      </Centered>
+    );
 
   const patch = async (p: Partial<Omit<Settings, "frozen">>) => {
     setSaving(true);

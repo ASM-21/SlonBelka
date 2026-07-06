@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { getStats, Stats } from "../lib/api";
+import { getStats } from "../lib/api";
+import { useFetch } from "../lib/useFetch";
 
 const BAND_COLOR: Record<string, string> = {
   apprentice: "bg-pink-400",
@@ -10,13 +10,21 @@ const BAND_COLOR: Record<string, string> = {
 };
 
 export default function StatsPage({ onDone }: { onDone: () => void }) {
-  const [s, setS] = useState<Stats | null>(null);
+  const { status, data: s, retry } = useFetch(getStats);
 
-  useEffect(() => {
-    getStats().then(setS).catch(() => setS(null));
-  }, []);
-
-  if (!s) return <Centered onDone={onDone}>loading stats...</Centered>;
+  if (status === "loading") return <Centered onDone={onDone}>loading stats...</Centered>;
+  if (status === "error" || !s)
+    return (
+      <Centered onDone={onDone}>
+        Couldn't load stats.
+        <button
+          onClick={retry}
+          className="mt-4 w-full rounded-lg bg-neutral-900 py-2 font-medium text-white"
+        >
+          Retry
+        </button>
+      </Centered>
+    );
 
   const maxDay = Math.max(1, ...s.reviews_by_day.map((d) => d.count));
   const distTotal = Math.max(1, ...[Object.values(s.srs_distribution).reduce((a, b) => a + b, 0)]);

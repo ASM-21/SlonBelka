@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { addSynonym, browseItems, getItem, ItemDetail, ItemSummary, removeSynonym, resurrect } from "../lib/api";
+import { addSynonym, browseItems, getItem, removeSynonym, resurrect } from "../lib/api";
+import { useFetch } from "../lib/useFetch";
 
 const STATUS_STYLE: Record<string, string> = {
   locked: "bg-neutral-200 text-neutral-500",
@@ -20,9 +21,6 @@ export default function ItemBrowser({ onDone }: { onDone: () => void }) {
   const [level, setLevel] = useState<number | "">("");
   const [pos, setPos] = useState("");
 
-  const [items, setItems] = useState<ItemSummary[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -31,36 +29,33 @@ export default function ItemBrowser({ onDone }: { onDone: () => void }) {
   }, [search]);
 
   // Reload from offset 0 whenever a filter changes.
-  useEffect(() => {
-    setLoading(true);
-    browseItems({
-      search: debounced || undefined,
-      level: level === "" ? undefined : level,
-      pos: pos || undefined,
-      limit: PAGE,
-      offset: 0,
-    })
-      .then((r) => {
-        setItems(r.items);
-        setTotal(r.total);
-      })
-      .catch(() => {
-        setItems([]);
-        setTotal(0);
-      })
-      .finally(() => setLoading(false));
-  }, [debounced, level, pos]);
+  const list = useFetch(
+    () =>
+      browseItems({
+        search: debounced || undefined,
+        level: level === "" ? undefined : level,
+        pos: pos || undefined,
+        limit: PAGE,
+        offset: 0,
+      }),
+    [debounced, level, pos],
+  );
+  const items = list.data?.items ?? [];
+  const total = list.data?.total ?? 0;
 
   const loadMore = async () => {
-    const r = await browseItems({
-      search: debounced || undefined,
-      level: level === "" ? undefined : level,
-      pos: pos || undefined,
-      limit: PAGE,
-      offset: items.length,
-    });
-    setItems((prev) => [...prev, ...r.items]);
-    setTotal(r.total);
+    try {
+      const r = await browseItems({
+        search: debounced || undefined,
+        level: level === "" ? undefined : level,
+        pos: pos || undefined,
+        limit: PAGE,
+        offset: items.length,
+      });
+      list.setData((prev) => (prev ? { ...r, items: [...prev.items, ...r.items] } : r));
+    } catch {
+      /* keep the current page; the button stays for another try */
+    }
   };
 
   if (selectedId != null) {
@@ -108,8 +103,15 @@ export default function ItemBrowser({ onDone }: { onDone: () => void }) {
       <p className="mt-3 text-xs text-neutral-400">{total} words</p>
 
       <div className="mt-2 divide-y divide-neutral-100">
-        {loading && items.length === 0 ? (
+        {list.status === "loading" ? (
           <p className="py-8 text-center text-neutral-400">loading...</p>
+        ) : list.status === "error" ? (
+          <p className="py-8 text-center text-neutral-400">
+            Couldn't load words.{" "}
+            <button onClick={list.retry} className="font-medium text-neutral-700 underline">
+              Retry
+            </button>
+          </p>
         ) : items.length === 0 ? (
           <p className="py-8 text-center text-neutral-400">no matches</p>
         ) : (
@@ -153,20 +155,15 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function Detail({ id, onBack }: { id: number; onBack: () => void }) {
-  const [item, setItem] = useState<ItemDetail | null>(null);
-  const [missing, setMissing] = useState(false);
+  const fetched = useFetch(() => getItem(id), [id]);
+  const item = fetched.data;
   const [synonyms, setSynonyms] = useState<string[]>([]);
   const [newSyn, setNewSyn] = useState("");
   const [savingSyn, setSavingSyn] = useState(false);
 
   useEffect(() => {
-    getItem(id)
-      .then((it) => {
-        setItem(it);
-        setSynonyms(it.synonyms);
-      })
-      .catch(() => setMissing(true));
-  }, [id]);
+    if (fetched.data) setSynonyms(fetched.data.synonyms);
+  }, [fetched.data]);
 
   const addSyn = async () => {
     const text = newSyn.trim();
@@ -176,22 +173,43 @@ function Detail({ id, onBack }: { id: number; onBack: () => void }) {
       const { synonyms: next } = await addSynonym(id, text);
       setSynonyms(next);
       setNewSyn("");
+    } catch {
+      /* leave the input so the user can retry */
     } finally {
       setSavingSyn(false);
     }
   };
 
   const removeSyn = async (text: string) => {
-    const { synonyms: next } = await removeSynonym(id, text);
-    setSynonyms(next);
+    try {
+      const { synonyms: next } = await removeSynonym(id, text);
+      setSynonyms(next);
+    } catch {
+      /* chip stays; the user can retry */
+    }
   };
 
   const doResurrect = async () => {
-    await resurrect(id);
-    setItem(await getItem(id));
+    try {
+      await resurrect(id);
+      fetched.retry();
+    } catch {
+      /* button stays enabled for another try */
+    }
   };
 
-  if (missing) return <Centered onBack={onBack}>Could not load that word.</Centered>;
+  if (fetched.status === "error")
+    return (
+      <Centered onBack={onBack}>
+        Could not load that word.
+        <button
+          onClick={fetched.retry}
+          className="mt-4 block w-full font-medium text-neutral-900 underline"
+        >
+          Retry
+        </button>
+      </Centered>
+    );
   if (!item) return <Centered onBack={onBack}>loading...</Centered>;
 
   const meta = [item.part_of_speech, item.gender, item.aspect].filter(Boolean).join(" · ");
