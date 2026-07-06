@@ -93,3 +93,35 @@ def test_detail_404_for_missing(client, auth):
 
 def test_browse_requires_auth(client):
     assert client.get("/items").status_code in (401, 403)
+
+
+def test_levels_summary(client, auth):
+    r = client.get("/items/levels", headers=auth)
+    # 200 guards the route ordering: "levels" must not hit /{item_id} and 422.
+    assert r.status_code == 200
+    by_level = {lv["level"]: lv for lv in r.json()}
+    assert by_level[1]["total"] == 8
+    assert by_level[2]["total"] == 6
+    assert by_level[1]["guru"] == 0
+    assert by_level[1]["threshold"] == 0.7
+    assert by_level[1]["cleared"] is False
+    assert by_level[1]["accessible"] is True
+    assert by_level[1]["current"] is True
+    # A fresh free user at level 1 cannot access level 2 yet.
+    assert by_level[2]["accessible"] is False
+    assert by_level[2]["current"] is False
+
+
+def test_levels_summary_counts_guru_and_cleared(client, auth):
+    uid = client.get("/auth/me", headers=auth).json()["id"]
+    from app.db import SessionLocal
+    from app.models import Item, UserItemState
+    with SessionLocal() as db:
+        lvl1 = db.scalars(select(Item).where(Item.level == 1)).all()
+        for it in lvl1[:6]:  # 6 of 8 at Guru clears the 70% threshold
+            db.add(UserItemState(user_id=uid, item_id=it.id, srs_stage=5, available_at=None))
+        db.commit()
+    levels = client.get("/items/levels", headers=auth).json()
+    lv1 = next(lv for lv in levels if lv["level"] == 1)
+    assert lv1["guru"] == 6
+    assert lv1["cleared"] is True

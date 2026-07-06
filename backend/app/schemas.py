@@ -258,6 +258,16 @@ class ItemBrowseResponse(BaseModel):
     items: list[ItemSummary]
 
 
+class LevelSummary(BaseModel):
+    level: int
+    total: int
+    guru: int
+    threshold: float
+    cleared: bool
+    accessible: bool
+    current: bool
+
+
 class SentenceOut(BaseModel):
     ru: str
     en: str
