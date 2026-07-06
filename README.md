@@ -6,22 +6,23 @@ The app loop is built and tested end to end. The remaining work to reach a publi
 
 ## Features
 
-- Lessons and reviews on a real SRS engine (apprentice through burned), with per-item scheduling.
+- Lessons and reviews on a real SRS engine (apprentice through burned), with per-item scheduling, shuffled queues, and visible stage transitions after each completed word.
 - Answer grading tuned for Russian: stress and ё/е insensitive, with typo tolerance, plus per-user synonyms so a correct-but-unlisted answer stops being marked wrong.
-- On-screen Cyrillic keyboard (JCUKEN and phonetic layouts).
-- Leeches, extra study, and no-stakes practice modes.
+- Russian input from a physical keyboard (Latin keys map phonetically to Cyrillic) or the on-screen Cyrillic keyboard (JCUKEN and phonetic layouts).
+- Tricky words (leeches), extra study incl. burned words, and no-stakes practice modes.
 - Burned-item resurrection to bring a retired word back for another pass.
+- Dictionary browsable as a level grid with per-level progress, plus search and rich word detail.
 - Progress dashboard and a stats page (reviews over time, accuracy, streaks, SRS distribution).
-- End-of-session summaries for lessons and reviews.
+- End-of-session summaries for lessons and reviews, with early exit that keeps every submitted answer.
 - Offline reviews: answers queue locally and sync on reconnect (PWA with a service worker).
-- Accounts with refresh-token auth, email verification and reset, rate limiting, and a Stripe billing scaffold with a free tier by level.
+- Accounts with refresh-token auth, email verification and reset, rate limiting, terms acceptance at signup with in-app legal pages, and a Stripe billing scaffold with a free tier by level.
 
 ## Tech stack
 
 - Backend: FastAPI, SQLAlchemy 2.0, Pydantic v2, Alembic, Postgres (sqlite for zero-config dev).
 - Frontend: Vite, React, TypeScript, Tailwind.
 - Auth: Argon2 password hashing, JWT access and refresh tokens.
-- Tests: pytest (174) and Vitest (26).
+- Tests: pytest (181) and Vitest (38).
 
 ## Quickstart
 
