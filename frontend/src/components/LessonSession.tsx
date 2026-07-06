@@ -3,7 +3,7 @@ import SessionSummary from "./SessionSummary";
 import { completeLessons, getLessons, LessonItem } from "../lib/api";
 import { gradeMeaning, gradeProduction } from "../lib/grading";
 import { shuffle, spreadPairs } from "../lib/shuffle";
-import CyrillicKeyboard from "./CyrillicKeyboard";
+import ProductionInput from "./ProductionInput";
 
 type Phase = "info" | "quiz" | "committing" | "done";
 type QType = "meaning" | "production";
@@ -220,24 +220,19 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
                 setInput(e.target.value);
                 setNearMiss(false);
               }}
-              onKeyDown={(e) => e.key === "Enter" && input && grade(false)}
+              onKeyDown={(e) => e.key === "Enter" && !e.repeat && input && grade(false)}
               placeholder="english meaning"
               className="w-full rounded-lg border border-neutral-300 px-3 py-3 text-center text-lg"
             />
           ) : (
-            <>
-              <div className="mb-3 min-h-[3rem] rounded-lg border border-neutral-300 px-3 py-3 text-center text-2xl">
-                {input || <span className="text-neutral-300">...</span>}
-              </div>
-              <CyrillicKeyboard
-                onKey={(c) => {
-                  setInput((i) => i + c);
-                  setNearMiss(false);
-                }}
-                onBackspace={() => setInput((i) => i.slice(0, -1))}
-                onSubmit={() => input && grade(false)}
-              />
-            </>
+            <ProductionInput
+              value={input}
+              onChange={(v) => {
+                setInput(v);
+                setNearMiss(false);
+              }}
+              onSubmit={() => grade(false)}
+            />
           )}
 
           {nearMiss && (

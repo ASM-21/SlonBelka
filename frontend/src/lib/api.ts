@@ -90,6 +90,9 @@ export interface SubmitResult {
   status: string;
   correct: boolean;
   srs_stage: number;
+  srs_stage_before: number;
+  srs_stage_name: string;
+  srs_stage_before_name: string;
   available_at?: string | null;
   pass_complete: boolean;
   passed: boolean;

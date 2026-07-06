@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { practice, ReviewItem } from "../lib/api";
-import CyrillicKeyboard from "./CyrillicKeyboard";
+import ProductionInput from "./ProductionInput";
 
 /**
  * No-stakes practice over a fixed set of prompts. Used for leech training and
@@ -67,21 +67,12 @@ export default function PracticeSession({
               autoFocus
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && input && submit()}
+              onKeyDown={(e) => e.key === "Enter" && !e.repeat && input && submit()}
               placeholder="english meaning"
               className="w-full rounded-lg border border-neutral-300 px-3 py-3 text-center text-lg"
             />
           ) : (
-            <>
-              <div className="mb-3 min-h-[3rem] rounded-lg border border-neutral-300 px-3 py-3 text-center text-2xl">
-                {input || <span className="text-neutral-300">...</span>}
-              </div>
-              <CyrillicKeyboard
-                onKey={(c) => setInput((i) => i + c)}
-                onBackspace={() => setInput((i) => i.slice(0, -1))}
-                onSubmit={() => input && submit()}
-              />
-            </>
+            <ProductionInput value={input} onChange={setInput} onSubmit={() => input && submit()} />
           )}
           {isMeaning && (
             <button
@@ -104,7 +95,11 @@ export default function PracticeSession({
           </div>
           <div className="mt-4 text-3xl">{feedback.stressed}</div>
           <div className="mt-1 text-neutral-600">{feedback.expected}</div>
-          <button onClick={cont} className="mt-6 w-full rounded-lg bg-neutral-900 py-2 font-medium text-white">
+          <button
+            autoFocus
+            onClick={cont}
+            className="mt-6 w-full rounded-lg bg-neutral-900 py-2 font-medium text-white"
+          >
             Continue
           </button>
         </div>
