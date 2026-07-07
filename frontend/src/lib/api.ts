@@ -90,6 +90,9 @@ export interface SubmitResult {
   status: string;
   correct: boolean;
   srs_stage: number;
+  srs_stage_before: number;
+  srs_stage_name: string;
+  srs_stage_before_name: string;
   available_at?: string | null;
   pass_complete: boolean;
   passed: boolean;
@@ -208,8 +211,11 @@ interface TokenPair { access_token: string; refresh_token: string }
 // ---------- auth ----------
 export const getHealth = () => api<{ status: string; version: string }>("/health");
 
-export const register = (email: string, password: string) =>
-  api<TokenPair>("/auth/register", { method: "POST", body: JSON.stringify({ email, password }) });
+export const register = (email: string, password: string, acceptedTerms: boolean) =>
+  api<TokenPair>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify({ email, password, accepted_terms: acceptedTerms }),
+  });
 
 export const login = (email: string, password: string) =>
   api<TokenPair>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
@@ -315,6 +321,18 @@ export const browseItems = (params: {
   q.set("offset", String(params.offset ?? 0));
   return api<ItemBrowseResponse>(`/items?${q.toString()}`);
 };
+
+export interface LevelSummary {
+  level: number;
+  total: number;
+  guru: number;
+  threshold: number;
+  cleared: boolean;
+  accessible: boolean;
+  current: boolean;
+}
+
+export const getLevels = () => api<LevelSummary[]>("/items/levels");
 
 export const getItem = (id: number) => api<ItemDetail>(`/items/${id}`);
 

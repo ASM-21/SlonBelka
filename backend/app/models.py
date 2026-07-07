@@ -38,6 +38,8 @@ class User(Base):
     timezone: Mapped[str] = mapped_column(String(64), default="UTC")
     current_level: Mapped[int] = mapped_column(Integer, default=1)
     settings: Mapped[dict] = mapped_column(JSON, default=dict)
+    # NULL for accounts created before the terms checkbox existed.
+    tos_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 

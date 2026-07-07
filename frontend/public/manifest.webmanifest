@@ -4,8 +4,8 @@
   "description": "Learn Russian vocabulary with spaced repetition.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fafafa",
-  "theme_color": "#111111",
+  "background_color": "#F5F3EF",
+  "theme_color": "#26251F",
   "icons": [
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]

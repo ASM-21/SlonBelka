@@ -37,12 +37,12 @@ docker compose up --build         # backend :8000, Postgres :5432
 
 ## Test commands (both must be green)
 
-Backend (174 tests):
+Backend (181 tests):
 ```bash
 cd backend && rm -f *.db && python -m pytest -q
 ```
 
-Frontend (26 tests, plus typecheck and build):
+Frontend (38 tests, plus typecheck and build):
 ```bash
 cd frontend && npx tsc --noEmit && npm run build && npx vitest run
 ```
@@ -64,8 +64,9 @@ Backend (`backend/app/`):
 - `migrations/` Alembic. `seed_dev.py` demo content (uses the importer). `tests/` pytest suite, `conftest.py` fixtures.
 
 Frontend (`frontend/src/`):
-- `lib/` `api.ts` (typed client with refresh-token auto-refresh), `grading.ts` (TS port of server grading, kept byte-identical for the client-side lesson quiz), `offlineQueue.ts` (IndexedDB), `sync.ts` (drains the queue to `/reviews/sync`), `push.ts` (VAPID subscribe).
-- `components/` one per screen: App (view switch), AuthScreen, Home, LessonSession, ReviewSession, LeechesPage, PracticeSession, CyrillicKeyboard, ItemBrowser, SettingsPage, UpgradePage, ExtraStudyPage, BurnedPage, StatsPage, SessionSummary.
+- `lib/` `api.ts` (typed client with refresh-token auto-refresh), `grading.ts` (TS port of server grading, kept byte-identical for the client-side lesson quiz), `offlineQueue.ts` (IndexedDB), `sync.ts` (drains the queue to `/reviews/sync`), `push.ts` (VAPID subscribe), `useFetch.ts` (loading/error/retry hook for all data pages), `shuffle.ts` (Fisher-Yates plus pair spreading for session queues), `typing.ts` (physical-keyboard Latin to Cyrillic mapping), `labels.ts` (shared UI names: Tricky words, band names, level bands).
+- `components/` one per screen: App (view switch), AuthScreen, Home, LessonSession, ReviewSession, LeechesPage, PracticeSession, CyrillicKeyboard, ProductionInput (shared Russian answer input, physical plus on-screen), ItemInfoPanel (after-answer word details), ItemBrowser, SettingsPage, UpgradePage, ExtraStudyPage, BurnedPage, StatsPage, SessionSummary, LegalPage (renders bundled legal markdown), ui (PageHeader, MascotPlaceholder).
+- `legal/` bundled copies of the three user-facing docs from `docs/legal/`; keep them in sync when the source changes.
 - `public/` service worker (`sw.js`), web manifest, icon.
 
 ## Migrations workflow (verified)
@@ -102,3 +103,6 @@ Add or update content: build a list of record dicts and call `upsert_items(db, r
 - `GET /lessons` returns at most the daily lesson cap, so a test that needs many items should query the DB directly rather than through that endpoint.
 - Test fixtures that mutate state through `SessionLocal` must `db.commit()`, or the change rolls back and the assertion fails.
 - The client-side lesson quiz grades locally with `frontend/src/lib/grading.ts`; if you change server grading in `backend/app/grading.py`, keep the TS port in sync.
+- Registration requires `accepted_terms: true` (400 otherwise); test helpers that register must send it.
+- The legal docs exist twice: `docs/legal/` is the source, `frontend/src/legal/` is the bundled copy the app renders. Change both together. Placeholders ([SUPPORT EMAIL], [DATE], [X days]) still need filling before publishing.
+- Fonts are self-hosted via fontsource because `sw.js` never caches cross-origin requests; a Google Fonts link would break offline.

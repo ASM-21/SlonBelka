@@ -48,6 +48,8 @@ def test_full_pass_advances_stage(client, auth):
     assert r1.status_code == 200
     assert r1.json()["correct"] is True
     assert r1.json()["pass_complete"] is False  # production still pending
+    # Mid-pass answers report no stage transition.
+    assert r1.json()["srs_stage_before"] == r1.json()["srs_stage"] == 1
 
     r2 = client.post("/reviews", headers=auth, json={
         "item_id": voda, "question_type": "production", "answer": "вода", "client_event_id": "e2"})
@@ -55,6 +57,9 @@ def test_full_pass_advances_stage(client, auth):
     assert body["correct"] is True
     assert body["pass_complete"] is True
     assert body["srs_stage"] == 2
+    assert body["srs_stage_before"] == 1
+    assert body["srs_stage_before_name"] == "Apprentice 1"
+    assert body["srs_stage_name"] == "Apprentice 2"
     assert body["available_at"] is not None
     assert body["stressed_form"] == "вода\u0301"
 
@@ -74,6 +79,9 @@ def test_idempotent_resubmit(client, auth):
     again = client.post("/reviews", headers=auth, json={
         "item_id": voda, "question_type": "meaning", "answer": "water", "client_event_id": "dup1"})
     assert again.json()["status"] == "duplicate"
+    # Duplicates still carry the stage fields (no transition implied).
+    assert again.json()["srs_stage_before"] == again.json()["srs_stage"]
+    assert again.json()["srs_stage_name"] == "Apprentice 1"
 
 
 def test_miss_keeps_stage_at_one(client, auth):
@@ -91,6 +99,42 @@ def test_miss_keeps_stage_at_one(client, auth):
     body = final.json()
     assert body["pass_complete"] is True
     assert body["srs_stage"] == 1  # a miss while at Apprentice 1 floors at 1
+    assert body["srs_stage_before"] == 1
+    assert body["srs_stage_name"] == "Apprentice 1"
+
+
+def test_demotion_reported_on_final_correct_answer(client, auth):
+    """
+    A miss earlier in the pass demotes the item even when the answer that
+    completes the pass is correct. The response must expose the transition so
+    the client can show it instead of silently dropping the stage.
+    """
+    from app.db import SessionLocal
+    from app.models import UserItemState
+
+    by_lemma = _items_by_lemma(client, auth)
+    client.post("/lessons/complete", json={"item_ids": [it["id"] for it in by_lemma.values()]}, headers=auth)
+    voda = by_lemma["вода"]["id"]
+    with SessionLocal() as db:
+        st = db.query(UserItemState).filter_by(item_id=voda).first()
+        st.srs_stage = 5  # Guru 1
+        db.commit()
+    make_all_due()
+
+    client.post("/reviews", headers=auth, json={
+        "item_id": voda, "question_type": "meaning", "answer": "zzz", "client_event_id": "d1"})
+    client.post("/reviews", headers=auth, json={
+        "item_id": voda, "question_type": "meaning", "answer": "water", "client_event_id": "d2"})
+    final = client.post("/reviews", headers=auth, json={
+        "item_id": voda, "question_type": "production", "answer": "вода", "client_event_id": "d3"})
+    body = final.json()
+    assert body["correct"] is True
+    assert body["pass_complete"] is True
+    # One missed type at Guru: drop round_half_up(1/2) * penalty 2 = 2 stages.
+    assert body["srs_stage_before"] == 5
+    assert body["srs_stage"] == 3
+    assert body["srs_stage_before_name"] == "Guru 1"
+    assert body["srs_stage_name"] == "Apprentice 3"
 
 
 def test_override_avoids_miss(client, auth):
@@ -117,6 +161,7 @@ def test_near_miss_is_not_recorded(client, auth):
         "item_id": spasibo, "question_type": "meaning", "answer": "thnk", "client_event_id": "n1"})
     assert r.json()["status"] == "near_miss"
     assert r.json()["pass_complete"] is False
+    assert r.json()["srs_stage_before"] == r.json()["srs_stage"] == 1
     # Still pending because nothing was recorded.
     remaining = {(rv["item_id"], rv["question_type"]) for rv in client.get("/reviews", headers=auth).json()}
     assert (spasibo, "meaning") in remaining

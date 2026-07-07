@@ -89,6 +89,42 @@ def browse(
     }
 
 
+def levels_summary(db: Session, user: User) -> list[dict]:
+    """Per-level item totals and the user's Guru progress, for the level browser."""
+    max_level = entitlements.accessible_level(db, user)
+    totals = dict(
+        db.execute(select(Item.level, func.count()).group_by(Item.level)).all()
+    )
+    gurus = dict(
+        db.execute(
+            select(Item.level, func.count())
+            .select_from(UserItemState)
+            .join(Item, Item.id == UserItemState.item_id)
+            .where(
+                and_(
+                    UserItemState.user_id == user.id,
+                    UserItemState.srs_stage >= engine.GURU_THRESHOLD,
+                )
+            )
+            .group_by(Item.level)
+        ).all()
+    )
+    out = []
+    for level in sorted(totals):
+        total = totals[level]
+        guru = gurus.get(level, 0)
+        out.append({
+            "level": level,
+            "total": total,
+            "guru": guru,
+            "threshold": engine.unlock_threshold(level),
+            "cleared": engine.level_is_cleared(guru, total, level),
+            "accessible": level <= max_level,
+            "current": level == user.current_level,
+        })
+    return out
+
+
 def detail(db: Session, user: User, item_id: int) -> dict | None:
     item = db.get(Item, item_id)
     if item is None:

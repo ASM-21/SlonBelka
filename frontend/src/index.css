@@ -1,3 +1,45 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Slonbelka design tokens (docs/Slonbelka Handoff.dc.html). Exposed to
+   Tailwind as the sb-* color family in tailwind.config.js. */
+:root {
+  --sb-bg: #f5f3ef;
+  --sb-card: #fcfbf9;
+  --sb-card2: #ede9e1;
+  --sb-ink: #26251f;
+  --sb-muted: #8b897f;
+  --sb-line: #e7e3da;
+  --sb-accent: #be4a28;
+  --sb-accent2: #a63e20;
+  --sb-accent-soft: #f3e4da;
+  --sb-gold: #c1892e;
+  --sb-gold-soft: #f5ead3;
+  --sb-appr: #e86b90;
+  --sb-guru: #9d6fcb;
+  --sb-master: #5e8ad6;
+  --sb-enl: #4fa396;
+  --sb-burned: #26251f;
+}
+
+@layer base {
+  body {
+    @apply bg-sb-bg text-sb-ink antialiased;
+  }
+}
+
+@keyframes sb-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sb-fade {
+  animation: sb-fade 0.25s ease;
+}

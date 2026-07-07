@@ -5,7 +5,7 @@
 // API calls (cross-origin) are never cached; offline review answers are handled
 // by the app's IndexedDB queue, not here.
 
-const CACHE = "slonbelka-v1";
+const CACHE = "slonbelka-v2"; // bumped for the reskin so stale shells refresh
 const SHELL = ["/", "/index.html", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {

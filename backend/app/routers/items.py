@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import User
 from app.routers.auth import current_user
-from app.schemas import ItemBrowseResponse, ItemDetail, SynonymRequest, SynonymsResponse
+from app.schemas import ItemBrowseResponse, ItemDetail, LevelSummary, SynonymRequest, SynonymsResponse
 from app.services import items
 from app.services import synonyms as synonyms_service
 
@@ -26,6 +26,15 @@ def browse_items(
     db: Session = Depends(get_db),
 ) -> dict:
     return items.browse(db, user, search=search, level=level, pos=pos, limit=limit, offset=offset)
+
+
+# Declared before /{item_id} so "levels" is not captured by the int path param.
+@router.get("/levels", response_model=list[LevelSummary])
+def levels(
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> list:
+    return items.levels_summary(db, user)
 
 
 @router.get("/{item_id}", response_model=ItemDetail)

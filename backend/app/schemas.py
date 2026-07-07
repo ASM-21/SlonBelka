@@ -11,6 +11,7 @@ from pydantic import BaseModel, EmailStr, Field
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
+    accepted_terms: bool = False
 
 
 class LoginRequest(BaseModel):
@@ -97,6 +98,9 @@ class SubmitReviewResponse(BaseModel):
     status: str                  # correct | incorrect | near_miss | override | duplicate
     correct: bool
     srs_stage: int
+    srs_stage_before: int        # stage when the answer was submitted; differs from
+    srs_stage_name: str          # srs_stage only when this answer completed a pass
+    srs_stage_before_name: str
     available_at: datetime | None = None
     pass_complete: bool = False
     passed: bool = False
@@ -253,6 +257,16 @@ class ItemBrowseResponse(BaseModel):
     limit: int
     offset: int
     items: list[ItemSummary]
+
+
+class LevelSummary(BaseModel):
+    level: int
+    total: int
+    guru: int
+    threshold: float
+    cleared: bool
+    accessible: bool
+    current: bool
 
 
 class SentenceOut(BaseModel):

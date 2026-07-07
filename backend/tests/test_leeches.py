@@ -94,6 +94,37 @@ def test_extra_study_recently_learned(client, auth):
     assert len(s) == 6
 
 
+def _make_burned(uid: int) -> int:
+    """Create a burned level-1 item state. Returns the item id."""
+    from datetime import datetime, timezone
+
+    from app.db import SessionLocal
+    from app.models import Item, UserItemState
+
+    with SessionLocal() as db:
+        item = db.scalars(select(Item).where(Item.level == 1).order_by(Item.id)).first()
+        db.add(UserItemState(
+            user_id=uid, item_id=item.id, srs_stage=9,
+            burned_at=datetime.now(timezone.utc), available_at=None,
+        ))
+        db.commit()
+        return item.id
+
+
+def test_extra_study_burned_mode(client, auth):
+    uid = _uid(client, auth)
+    item_id = _make_burned(uid)
+    s = client.get("/extra-study", params={"mode": "burned"}, headers=auth).json()
+    assert {r["question_type"] for r in s} == {"meaning", "production"}
+    assert all(r["item_id"] == item_id for r in s)
+    # Practicing a burned item must not resurface it in reviews.
+    assert client.get("/reviews", headers=auth).json() == []
+
+
+def test_extra_study_burned_mode_empty(client, auth):
+    assert client.get("/extra-study", params={"mode": "burned"}, headers=auth).json() == []
+
+
 def test_mnemonic_upsert(client, auth):
     item_id = client.get("/lessons", headers=auth).json()[0]["id"]
     r = client.put(f"/items/{item_id}/mnemonic", headers=auth, json={

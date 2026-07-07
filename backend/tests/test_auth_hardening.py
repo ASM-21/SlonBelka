@@ -6,8 +6,10 @@ from app.services.email import get_outbox
 from app.services.ratelimit import reset as reset_rate_limit
 
 
-def _register(client, email="x@e.com", password="password123"):
-    return client.post("/auth/register", json={"email": email, "password": password})
+def _register(client, email="x@e.com", password="password123", accepted_terms=True):
+    return client.post("/auth/register", json={
+        "email": email, "password": password, "accepted_terms": accepted_terms,
+    })
 
 
 def test_register_returns_access_and_refresh(client):
@@ -15,6 +17,25 @@ def test_register_returns_access_and_refresh(client):
     assert r.status_code == 201
     body = r.json()
     assert body["access_token"] and body["refresh_token"]
+
+
+def test_register_requires_accepted_terms(client):
+    r = _register(client, accepted_terms=False)
+    assert r.status_code == 400
+    # Omitting the field entirely is also a refusal (defaults to false).
+    r2 = client.post("/auth/register", json={"email": "y@e.com", "password": "password123"})
+    assert r2.status_code == 400
+
+
+def test_register_records_tos_acceptance_time(client):
+    _register(client, email="tos@e.com")
+    from app.db import SessionLocal
+    from app.models import User
+    from sqlalchemy import select
+
+    with SessionLocal() as db:
+        user = db.scalar(select(User).where(User.email == "tos@e.com"))
+        assert user is not None and user.tos_accepted_at is not None
 
 
 def test_register_sends_verification_email(client):

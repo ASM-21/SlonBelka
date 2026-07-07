@@ -1,5 +1,7 @@
 // Reusable end-of-session recap, shared by reviews and lessons.
 
+import { MascotPlaceholder } from "./ui";
+
 interface StatCard {
   label: string;
   value: string;
@@ -21,15 +23,18 @@ export default function SessionSummary({
   onDone: () => void;
 }) {
   return (
-    <div className="mx-auto mt-16 w-full max-w-md px-6 text-center">
-      <h2 className="text-2xl font-semibold">{title}</h2>
-      {subtitle && <p className="mt-1 text-neutral-500">{subtitle}</p>}
+    <div className="mx-auto mt-10 w-full max-w-md px-6 text-center">
+      <div className="mb-4 flex justify-center">
+        <MascotPlaceholder label="celebration" />
+      </div>
+      <h2 className="font-display text-3xl font-extrabold leading-tight text-sb-ink">{title}</h2>
+      {subtitle && <p className="mt-1.5 text-[15px] text-sb-muted">{subtitle}</p>}
 
       <div className={`mt-6 grid gap-3 ${stats.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
         {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border border-neutral-200 px-3 py-4">
-            <div className="text-2xl font-semibold">{s.value}</div>
-            <div className="text-xs text-neutral-500">{s.label}</div>
+          <div key={s.label} className="rounded-2xl border border-sb-line bg-sb-card px-3 py-4">
+            <div className="font-display text-2xl font-extrabold text-sb-ink">{s.value}</div>
+            <div className="text-xs text-sb-muted">{s.label}</div>
           </div>
         ))}
       </div>
@@ -39,7 +44,7 @@ export default function SessionSummary({
           {highlights.map((h) => (
             <span
               key={h}
-              className="rounded-full bg-gradient-to-r from-amber-100 to-rose-100 px-3 py-1 text-sm font-medium text-rose-800"
+              className="rounded-full bg-sb-gold-soft px-3 py-1 text-sm font-semibold text-[#7A5F1E]"
             >
               {h}
             </span>
@@ -47,13 +52,13 @@ export default function SessionSummary({
         </div>
       )}
 
-      {note && <p className="mt-4 text-sm text-amber-600">{note}</p>}
+      {note && <p className="mt-4 text-sm text-[#7A5F1E]">{note}</p>}
 
       <button
         onClick={onDone}
-        className="mt-8 w-full rounded-lg bg-neutral-900 py-2.5 font-medium text-white"
+        className="mt-8 w-full rounded-xl bg-sb-accent py-3.5 font-bold text-white shadow-lg shadow-sb-accent/30"
       >
-        Back home
+        На главную · Home
       </button>
     </div>
   );

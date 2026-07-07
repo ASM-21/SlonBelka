@@ -292,6 +292,7 @@ def submit_review(
     if state is None:
         return {"error": "not_started"}
 
+    stage_before = state.srs_stage
     feedback_answer = item.translation_primary if question_type == "meaning" else item.stressed_form
 
     # Idempotency first: a re-sent answer returns the original result without
@@ -306,6 +307,9 @@ def submit_review(
             "status": "duplicate",
             "correct": existing.correct,
             "srs_stage": state.srs_stage,
+            "srs_stage_before": stage_before,
+            "srs_stage_before_name": engine.STAGE_NAMES[stage_before],
+            "srs_stage_name": engine.STAGE_NAMES[state.srs_stage],
             "available_at": state.available_at,
             "pass_complete": existing.srs_after is not None,
             "expected": feedback_answer,
@@ -332,6 +336,9 @@ def submit_review(
             "status": "near_miss",
             "correct": False,
             "srs_stage": state.srs_stage,
+            "srs_stage_before": stage_before,
+            "srs_stage_before_name": engine.STAGE_NAMES[stage_before],
+            "srs_stage_name": engine.STAGE_NAMES[state.srs_stage],
             "available_at": state.available_at,
             "pass_complete": False,
             "expected": feedback_answer,
@@ -401,6 +408,9 @@ def submit_review(
         "status": grade.value if not override else "override",
         "correct": correct,
         "srs_stage": state.srs_stage,
+        "srs_stage_before": stage_before,
+        "srs_stage_before_name": engine.STAGE_NAMES[stage_before],
+        "srs_stage_name": engine.STAGE_NAMES[state.srs_stage],
         "available_at": state.available_at,
         "pass_complete": pass_complete,
         "passed": result_passed,

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.timeutil import aware as _aware, utcnow as _utcnow
 from app.models import Item, ReviewEvent, User, UserItemState
 from app.srs import engine
-from app.services.learning import _level_guru_count, _level_total
+from app.services.learning import _level_guru_count, _level_total, maybe_level_up
 
 
 
@@ -36,6 +36,18 @@ def _streak(dates: set, today) -> int:
 
 def build_dashboard(db: Session, user: User, now: datetime | None = None) -> dict:
     now = now or _utcnow()
+
+    # Lazy level-up. Reviews normally trigger promotion, but entitlement can
+    # change between reviews (an upgrade to premium), which would otherwise
+    # leave the user stuck on a cleared level until their next completed pass.
+    # Advancing here also makes the response's `cleared` flag unambiguous:
+    # when it is true, the user is blocked by the free-tier wall.
+    leveled = False
+    while maybe_level_up(db, user):
+        leveled = True
+    if leveled:
+        db.commit()
+
     level = user.current_level
 
     # Level progress.

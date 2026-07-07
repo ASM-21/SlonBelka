@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
-import { addSynonym, browseItems, getItem, ItemDetail, ItemSummary, removeSynonym, resurrect } from "../lib/api";
+import { addSynonym, browseItems, getItem, getLevels, LevelSummary, removeSynonym, resurrect } from "../lib/api";
+import { LEVEL_BANDS } from "../lib/labels";
+import { Fetch, useFetch } from "../lib/useFetch";
+import { PageHeader } from "./ui";
 
 const STATUS_STYLE: Record<string, string> = {
-  locked: "bg-neutral-200 text-neutral-500",
-  available: "bg-sky-100 text-sky-700",
-  apprentice: "bg-pink-100 text-pink-700",
-  guru: "bg-purple-100 text-purple-700",
-  master: "bg-blue-100 text-blue-700",
-  enlightened: "bg-indigo-100 text-indigo-700",
-  burned: "bg-neutral-800 text-white",
+  locked: "bg-sb-card2 text-sb-muted",
+  available: "bg-sb-gold-soft text-[#7A5F1E]",
+  apprentice: "bg-sb-appr text-white",
+  guru: "bg-sb-guru text-white",
+  master: "bg-sb-master text-white",
+  enlightened: "bg-sb-enl text-white",
+  burned: "bg-sb-burned text-sb-gold",
 };
 
 const POS_OPTIONS = ["", "noun", "verb", "adjective", "adverb", "pronoun", "particle", "preposition"];
@@ -20,10 +23,9 @@ export default function ItemBrowser({ onDone }: { onDone: () => void }) {
   const [level, setLevel] = useState<number | "">("");
   const [pos, setPos] = useState("");
 
-  const [items, setItems] = useState<ItemSummary[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [view, setView] = useState<"levels" | "list">("levels");
+  const levels = useFetch(getLevels);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 250);
@@ -31,36 +33,33 @@ export default function ItemBrowser({ onDone }: { onDone: () => void }) {
   }, [search]);
 
   // Reload from offset 0 whenever a filter changes.
-  useEffect(() => {
-    setLoading(true);
-    browseItems({
-      search: debounced || undefined,
-      level: level === "" ? undefined : level,
-      pos: pos || undefined,
-      limit: PAGE,
-      offset: 0,
-    })
-      .then((r) => {
-        setItems(r.items);
-        setTotal(r.total);
-      })
-      .catch(() => {
-        setItems([]);
-        setTotal(0);
-      })
-      .finally(() => setLoading(false));
-  }, [debounced, level, pos]);
+  const list = useFetch(
+    () =>
+      browseItems({
+        search: debounced || undefined,
+        level: level === "" ? undefined : level,
+        pos: pos || undefined,
+        limit: PAGE,
+        offset: 0,
+      }),
+    [debounced, level, pos],
+  );
+  const items = list.data?.items ?? [];
+  const total = list.data?.total ?? 0;
 
   const loadMore = async () => {
-    const r = await browseItems({
-      search: debounced || undefined,
-      level: level === "" ? undefined : level,
-      pos: pos || undefined,
-      limit: PAGE,
-      offset: items.length,
-    });
-    setItems((prev) => [...prev, ...r.items]);
-    setTotal(r.total);
+    try {
+      const r = await browseItems({
+        search: debounced || undefined,
+        level: level === "" ? undefined : level,
+        pos: pos || undefined,
+        limit: PAGE,
+        offset: items.length,
+      });
+      list.setData((prev) => (prev ? { ...r, items: [...prev.items, ...r.items] } : r));
+    } catch {
+      /* keep the current page; the button stays for another try */
+    }
   };
 
   if (selectedId != null) {
@@ -68,105 +67,209 @@ export default function ItemBrowser({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="mx-auto mt-10 w-full max-w-md px-5">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Browse words</h2>
-        <button onClick={onDone} className="text-sm text-neutral-400 hover:text-neutral-700">
-          done
-        </button>
-      </div>
+    <div className="mx-auto w-full max-w-md px-5 pb-10 pt-6">
+      <PageHeader ru="Словарь" en="Dictionary" onBack={onDone} />
 
       <input
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="search word or meaning"
-        className="w-full rounded-lg border border-neutral-300 px-3 py-2"
+        onChange={(e) => {
+          setSearch(e.target.value);
+          if (e.target.value) setView("list");
+        }}
+        placeholder="поиск · search word or meaning"
+        className="w-full rounded-xl border border-sb-line bg-sb-card px-3 py-2.5 outline-none focus:border-sb-muted"
       />
 
-      <div className="mt-3 flex gap-2">
-        <select
-          value={level}
-          onChange={(e) => setLevel(e.target.value === "" ? "" : Number(e.target.value))}
-          className="flex-1 rounded-lg border border-neutral-300 px-2 py-2 text-sm"
-        >
-          <option value="">All levels</option>
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-            <option key={n} value={n}>Level {n}</option>
-          ))}
-        </select>
-        <select
-          value={pos}
-          onChange={(e) => setPos(e.target.value)}
-          className="flex-1 rounded-lg border border-neutral-300 px-2 py-2 text-sm"
-        >
-          {POS_OPTIONS.map((p) => (
-            <option key={p} value={p}>{p === "" ? "All types" : p}</option>
-          ))}
-        </select>
-      </div>
+      {view === "levels" ? (
+        <LevelGrid
+          levels={levels}
+          onPick={(n) => {
+            setLevel(n);
+            setView("list");
+          }}
+          onAll={() => {
+            setLevel("");
+            setView("list");
+          }}
+        />
+      ) : (
+        <>
+          <button
+            onClick={() => {
+              setView("levels");
+              setSearch("");
+              setLevel("");
+              setPos("");
+            }}
+            className="mt-3 text-sm text-sb-muted hover:text-sb-ink"
+          >
+            ← уровни · levels
+          </button>
 
-      <p className="mt-3 text-xs text-neutral-400">{total} words</p>
-
-      <div className="mt-2 divide-y divide-neutral-100">
-        {loading && items.length === 0 ? (
-          <p className="py-8 text-center text-neutral-400">loading...</p>
-        ) : items.length === 0 ? (
-          <p className="py-8 text-center text-neutral-400">no matches</p>
-        ) : (
-          items.map((it) => (
-            <button
-              key={it.id}
-              onClick={() => setSelectedId(it.id)}
-              className="flex w-full items-center justify-between py-3 text-left hover:bg-neutral-50"
+          <div className="mt-2 flex gap-2">
+            <select
+              value={level}
+              onChange={(e) => setLevel(e.target.value === "" ? "" : Number(e.target.value))}
+              className="flex-1 rounded-lg border border-sb-line bg-sb-card px-2 py-2 text-sm"
             >
-              <div className="min-w-0">
-                <div className="truncate text-lg">{it.stressed_form}</div>
-                <div className="truncate text-sm text-neutral-500">{it.translation_primary}</div>
-              </div>
-              <div className="ml-3 flex shrink-0 items-center gap-2">
-                <span className="text-xs text-neutral-400">L{it.level}</span>
-                <StatusBadge status={it.status} />
-              </div>
-            </button>
-          ))
-        )}
-      </div>
+              <option value="">All levels</option>
+              {(levels.data ?? []).map((lv) => (
+                <option key={lv.level} value={lv.level}>Level {lv.level}</option>
+              ))}
+            </select>
+            <select
+              value={pos}
+              onChange={(e) => setPos(e.target.value)}
+              className="flex-1 rounded-lg border border-sb-line bg-sb-card px-2 py-2 text-sm"
+            >
+              {POS_OPTIONS.map((p) => (
+                <option key={p} value={p}>{p === "" ? "All types" : p}</option>
+              ))}
+            </select>
+          </div>
 
-      {items.length < total && (
-        <button
-          onClick={loadMore}
-          className="mt-4 w-full rounded-lg border border-neutral-200 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
-        >
-          Load more
-        </button>
+          <p className="mt-3 text-xs text-sb-muted">{total} words</p>
+
+          <div className="mt-2 divide-y divide-sb-line">
+            {list.status === "loading" ? (
+              <p className="py-8 text-center text-sb-muted">loading...</p>
+            ) : list.status === "error" ? (
+              <p className="py-8 text-center text-sb-muted">
+                Couldn't load words.{" "}
+                <button onClick={list.retry} className="font-semibold text-sb-ink underline">
+                  Retry
+                </button>
+              </p>
+            ) : items.length === 0 ? (
+              <p className="py-8 text-center text-sb-muted">no matches</p>
+            ) : (
+              items.map((it) => (
+                <button
+                  key={it.id}
+                  onClick={() => setSelectedId(it.id)}
+                  className="flex w-full items-center justify-between py-3 text-left hover:bg-sb-card"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate font-display text-lg font-bold text-sb-ink">{it.stressed_form}</div>
+                    <div className="truncate text-sm text-sb-muted">{it.translation_primary}</div>
+                  </div>
+                  <div className="ml-3 flex shrink-0 items-center gap-2">
+                    <span className="text-xs text-sb-muted">L{it.level}</span>
+                    <StatusBadge status={it.status} />
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+
+          {items.length < total && (
+            <button
+              onClick={loadMore}
+              className="mt-4 w-full rounded-xl border border-sb-line bg-sb-card py-2 text-sm text-sb-muted hover:border-sb-muted"
+            >
+              Load more
+            </button>
+          )}
+        </>
       )}
+    </div>
+  );
+}
+
+function LevelGrid({
+  levels,
+  onPick,
+  onAll,
+}: {
+  levels: Fetch<LevelSummary[]>;
+  onPick: (level: number) => void;
+  onAll: () => void;
+}) {
+  if (levels.status === "loading")
+    return <p className="py-8 text-center text-sb-muted">loading levels...</p>;
+  if (levels.status === "error" || !levels.data)
+    return (
+      <p className="py-8 text-center text-sb-muted">
+        Couldn't load levels.{" "}
+        <button onClick={levels.retry} className="font-semibold text-sb-ink underline">
+          Retry
+        </button>
+      </p>
+    );
+
+  // Group into bands of ten levels, each with its themed name.
+  const bands = new Map<number, LevelSummary[]>();
+  for (const lv of levels.data) {
+    const b = Math.floor((lv.level - 1) / 10);
+    if (!bands.has(b)) bands.set(b, []);
+    bands.get(b)!.push(lv);
+  }
+
+  return (
+    <div className="mt-4">
+      {[...bands.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([bandIdx, lvls]) => {
+          const name = LEVEL_BANDS[Math.min(bandIdx, LEVEL_BANDS.length - 1)];
+          return (
+            <div key={bandIdx} className="mb-5">
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-sb-muted">
+                {name.ru} · {name.en}
+              </h3>
+              <div className="grid grid-cols-5 gap-2">
+                {lvls.map((lv) => (
+                  <button
+                    key={lv.level}
+                    onClick={() => onPick(lv.level)}
+                    className={`rounded-xl border bg-sb-card p-2 text-center hover:border-sb-muted ${
+                      lv.current ? "border-sb-accent" : "border-sb-line"
+                    } ${lv.accessible ? "" : "opacity-50"}`}
+                  >
+                    <div className="font-display text-lg font-bold text-sb-ink">{lv.level}</div>
+                    <div className="text-[10px] text-sb-muted">
+                      {lv.accessible ? (
+                        <>
+                          {lv.cleared && <span className="text-sb-enl">✓ </span>}
+                          {lv.guru}/{lv.total}
+                        </>
+                      ) : (
+                        <>🔒 {lv.total}</>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      <button
+        onClick={onAll}
+        className="mt-1 w-full rounded-xl border border-sb-line bg-sb-card py-2 text-sm font-medium text-sb-muted hover:border-sb-muted"
+      >
+        Все слова · All words
+      </button>
     </div>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLE[status] ?? "bg-neutral-100 text-neutral-600"}`}>
+    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_STYLE[status] ?? "bg-sb-card2 text-sb-muted"}`}>
       {status}
     </span>
   );
 }
 
 function Detail({ id, onBack }: { id: number; onBack: () => void }) {
-  const [item, setItem] = useState<ItemDetail | null>(null);
-  const [missing, setMissing] = useState(false);
+  const fetched = useFetch(() => getItem(id), [id]);
+  const item = fetched.data;
   const [synonyms, setSynonyms] = useState<string[]>([]);
   const [newSyn, setNewSyn] = useState("");
   const [savingSyn, setSavingSyn] = useState(false);
 
   useEffect(() => {
-    getItem(id)
-      .then((it) => {
-        setItem(it);
-        setSynonyms(it.synonyms);
-      })
-      .catch(() => setMissing(true));
-  }, [id]);
+    if (fetched.data) setSynonyms(fetched.data.synonyms);
+  }, [fetched.data]);
 
   const addSyn = async () => {
     const text = newSyn.trim();
@@ -176,54 +279,77 @@ function Detail({ id, onBack }: { id: number; onBack: () => void }) {
       const { synonyms: next } = await addSynonym(id, text);
       setSynonyms(next);
       setNewSyn("");
+    } catch {
+      /* leave the input so the user can retry */
     } finally {
       setSavingSyn(false);
     }
   };
 
   const removeSyn = async (text: string) => {
-    const { synonyms: next } = await removeSynonym(id, text);
-    setSynonyms(next);
+    try {
+      const { synonyms: next } = await removeSynonym(id, text);
+      setSynonyms(next);
+    } catch {
+      /* chip stays; the user can retry */
+    }
   };
 
   const doResurrect = async () => {
-    await resurrect(id);
-    setItem(await getItem(id));
+    try {
+      await resurrect(id);
+      fetched.retry();
+    } catch {
+      /* button stays enabled for another try */
+    }
   };
 
-  if (missing) return <Centered onBack={onBack}>Could not load that word.</Centered>;
+  if (fetched.status === "error")
+    return (
+      <Centered onBack={onBack}>
+        Could not load that word.
+        <button
+          onClick={fetched.retry}
+          className="mt-4 block w-full font-semibold text-sb-ink underline"
+        >
+          Retry
+        </button>
+      </Centered>
+    );
   if (!item) return <Centered onBack={onBack}>loading...</Centered>;
 
   const meta = [item.part_of_speech, item.gender, item.aspect].filter(Boolean).join(" · ");
 
   return (
-    <div className="mx-auto mt-10 w-full max-w-md px-5">
-      <button onClick={onBack} className="mb-4 text-sm text-neutral-500 hover:text-neutral-800">
-        ← back
+    <div className="mx-auto w-full max-w-md px-5 pb-10 pt-6">
+      <button onClick={onBack} className="mb-4 text-sm text-sb-muted hover:text-sb-ink">
+        ← назад · back
       </button>
 
-      <div className="rounded-2xl border border-neutral-200 p-6 text-center">
-        <div className="text-5xl">{item.stressed_form}</div>
-        {item.ipa && <div className="mt-1 text-sm text-neutral-400">/{item.ipa}/</div>}
-        <div className="mt-3 text-xl text-neutral-700">{item.translations.join(", ") || item.translation_primary}</div>
-        {meta && <div className="mt-1 text-sm text-neutral-400">{meta}</div>}
+      <div className="rounded-3xl border border-sb-line bg-sb-card p-6 text-center shadow-xl shadow-black/5">
+        <div className="font-display text-5xl font-bold text-sb-ink">{item.stressed_form}</div>
+        {item.ipa && <div className="mt-1 text-sm text-sb-muted">/{item.ipa}/</div>}
+        <div className="mt-3 text-xl font-semibold text-sb-ink">
+          {item.translations.join(", ") || item.translation_primary}
+        </div>
+        {meta && <div className="mt-1 text-sm text-sb-muted">{meta}</div>}
         <div className="mt-3 flex items-center justify-center gap-2">
           <StatusBadge status={item.status} />
-          <span className="text-xs text-neutral-400">Level {item.level}</span>
+          <span className="text-xs text-sb-muted">Level {item.level}</span>
         </div>
         {item.audio_url && (
           <button
             onClick={() => new Audio(item.audio_url!).play()}
-            className="mt-4 rounded-full bg-neutral-100 px-3 py-1 text-sm"
+            className="mt-4 rounded-full bg-sb-card2 px-4 py-1.5 text-sm font-semibold text-sb-ink"
           >
-            ▶ play
+            ▶ прослушать · play
           </button>
         )}
         {item.status === "burned" && (
           <div className="mt-4">
             <button
               onClick={doResurrect}
-              className="rounded-lg bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white"
+              className="rounded-lg bg-sb-ink px-4 py-1.5 text-sm font-bold text-white"
             >
               Resurrect
             </button>
@@ -231,10 +357,10 @@ function Detail({ id, onBack }: { id: number; onBack: () => void }) {
         )}
       </div>
 
-      {item.notes && <p className="mt-4 text-sm text-neutral-600">{item.notes}</p>}
+      {item.notes && <p className="mt-4 text-sm text-sb-muted">{item.notes}</p>}
 
       <Section title="Your synonyms">
-        <p className="mb-2 text-xs text-neutral-400">
+        <p className="mb-2 text-xs text-sb-muted">
           Extra meanings you'll also be marked correct for.
         </p>
         {synonyms.length > 0 && (
@@ -242,12 +368,12 @@ function Detail({ id, onBack }: { id: number; onBack: () => void }) {
             {synonyms.map((syn) => (
               <span
                 key={syn}
-                className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-3 py-1 text-sm"
+                className="inline-flex items-center gap-1 rounded-full bg-sb-card2 px-3 py-1 text-sm"
               >
                 {syn}
                 <button
                   onClick={() => removeSyn(syn)}
-                  className="text-neutral-400 hover:text-neutral-700"
+                  className="text-sb-muted hover:text-sb-ink"
                   aria-label={`remove ${syn}`}
                 >
                   ×
@@ -262,12 +388,12 @@ function Detail({ id, onBack }: { id: number; onBack: () => void }) {
             onChange={(e) => setNewSyn(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addSyn()}
             placeholder="add a synonym"
-            className="flex-1 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
+            className="flex-1 rounded-lg border border-sb-line bg-sb-card px-3 py-1.5 text-sm"
           />
           <button
             onClick={addSyn}
             disabled={savingSyn || !newSyn.trim()}
-            className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
+            className="rounded-lg bg-sb-ink px-3 py-1.5 text-sm font-bold text-white disabled:opacity-40"
           >
             Add
           </button>
@@ -276,8 +402,8 @@ function Detail({ id, onBack }: { id: number; onBack: () => void }) {
 
       {item.mnemonic && (item.mnemonic.meaning || item.mnemonic.reading) && (
         <Section title="Your mnemonic">
-          {item.mnemonic.meaning && <p className="text-sm text-neutral-700">{item.mnemonic.meaning}</p>}
-          {item.mnemonic.reading && <p className="mt-1 text-sm text-neutral-700">{item.mnemonic.reading}</p>}
+          {item.mnemonic.meaning && <p className="text-sm text-sb-ink">{item.mnemonic.meaning}</p>}
+          {item.mnemonic.reading && <p className="mt-1 text-sm text-sb-ink">{item.mnemonic.reading}</p>}
         </Section>
       )}
 
@@ -286,8 +412,8 @@ function Detail({ id, onBack }: { id: number; onBack: () => void }) {
           <ul className="space-y-3">
             {item.sentences.map((s, i) => (
               <li key={i}>
-                <div className="text-neutral-800">{s.ru}</div>
-                <div className="text-sm text-neutral-500">{s.en}</div>
+                <div className="text-sb-ink">{s.ru}</div>
+                <div className="text-sm text-sb-muted">{s.en}</div>
               </li>
             ))}
           </ul>
@@ -302,7 +428,7 @@ function Detail({ id, onBack }: { id: number; onBack: () => void }) {
             <Cell label="Wrong" value={String(item.state.incorrect_count)} />
           </div>
           {item.state.is_leech && (
-            <p className="mt-2 text-center text-xs text-rose-600">flagged as a leech</p>
+            <p className="mt-2 text-center text-xs text-rose-600">flagged as a tricky word</p>
           )}
         </Section>
       )}
@@ -313,7 +439,7 @@ function Detail({ id, onBack }: { id: number; onBack: () => void }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mt-5">
-      <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-400">{title}</h3>
+      <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-sb-muted">{title}</h3>
       {children}
     </div>
   );
@@ -321,18 +447,18 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Cell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-neutral-200 py-2">
-      <div className="font-semibold capitalize">{value}</div>
-      <div className="text-xs text-neutral-500">{label}</div>
+    <div className="rounded-xl border border-sb-line bg-sb-card py-2">
+      <div className="font-semibold capitalize text-sb-ink">{value}</div>
+      <div className="text-xs text-sb-muted">{label}</div>
     </div>
   );
 }
 
 function Centered({ children, onBack }: { children: React.ReactNode; onBack: () => void }) {
   return (
-    <div className="mx-auto mt-24 max-w-md px-6 text-center text-neutral-600">
+    <div className="mx-auto mt-24 max-w-md px-6 text-center text-sb-muted">
       {children}
-      <button onClick={onBack} className="mt-4 block w-full text-neutral-500 underline">
+      <button onClick={onBack} className="mt-4 block w-full text-sb-muted underline">
         back
       </button>
     </div>
