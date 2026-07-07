@@ -104,5 +104,5 @@ Add or update content: build a list of record dicts and call `upsert_items(db, r
 - Test fixtures that mutate state through `SessionLocal` must `db.commit()`, or the change rolls back and the assertion fails.
 - The client-side lesson quiz grades locally with `frontend/src/lib/grading.ts`; if you change server grading in `backend/app/grading.py`, keep the TS port in sync.
 - Registration requires `accepted_terms: true` (400 otherwise); test helpers that register must send it.
-- The legal docs exist twice: `docs/legal/` is the source, `frontend/src/legal/` is the bundled copy the app renders. Change both together. Placeholders ([YOUR NAME], [SUPPORT EMAIL], [DATE]) still need filling before publishing.
+- The legal docs exist twice: `docs/legal/` is the source, `frontend/src/legal/` is the bundled copy the app renders. Change both together. Placeholders ([SUPPORT EMAIL], [DATE], [X days]) still need filling before publishing.
 - Fonts are self-hosted via fontsource because `sw.js` never caches cross-origin requests; a Google Fonts link would break offline.

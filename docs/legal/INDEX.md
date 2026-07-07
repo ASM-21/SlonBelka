@@ -19,4 +19,4 @@ Internal only, don't publish or link in-app:
 
 Drop this whole `legal/` folder at `docs/legal/` in the Slonbelka repo. If you want the ToS/Privacy Policy served as actual app routes (not just repo docs), convert to HTML/JSX and add a simple markdown renderer, or just paste the markdown into static pages under `frontend/src/pages/legal/`.
 
-Still placeholders in all docs: `[YOUR NAME]`, `[DATE]`, `[SUPPORT EMAIL]`. Fill these before publishing.
+Still placeholders: `[DATE]`, `[SUPPORT EMAIL]`, and `[X days]` in the privacy policy. Fill these before publishing. Operator name is filled (Andrew Morrissey).

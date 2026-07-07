@@ -4,7 +4,7 @@
 
 **Last updated: [DATE]**
 
-These Terms of Service ("Terms") govern your use of Slonbelka (the "Service"), operated by [YOUR NAME], a sole proprietor ("we," "us," "our"). By creating an account or using the Service, you agree to these Terms.
+These Terms of Service ("Terms") govern your use of Slonbelka (the "Service"), operated by Andrew Morrissey, a sole proprietor ("we," "us," "our"). By creating an account or using the Service, you agree to these Terms.
 
 ## 1. The Service
 

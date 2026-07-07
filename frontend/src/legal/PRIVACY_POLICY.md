@@ -4,7 +4,7 @@
 
 **Last updated: [DATE]**
 
-This Privacy Policy explains what data Slonbelka ("we," "us," "our") collects, how we use it, and your rights. Slonbelka is operated by [YOUR NAME] as a sole proprietor.
+This Privacy Policy explains what data Slonbelka ("we," "us," "our") collects, how we use it, and your rights. Slonbelka is operated by Andrew Morrissey as a sole proprietor.
 
 ## 1. Data We Collect
 
