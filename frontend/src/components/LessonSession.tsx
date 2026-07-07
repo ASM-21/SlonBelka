@@ -65,6 +65,93 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
     [queue],
   );
 
+  const nextInfo = () => {
+    if (!items) return;
+    if (infoIdx >= items.length - 1) {
+      const q = buildQueue(items);
+      setQuizTotal(q.length);
+      setQueue(q);
+      setPhase("quiz");
+    } else {
+      setInfoIdx((i) => i + 1);
+    }
+  };
+
+  const commit = async () => {
+    if (!items) return;
+    setPhase("committing");
+    try {
+      const res = await completeLessons(items.map((i) => i.id));
+      setSummary({ started: res.started.length });
+    } catch {
+      setSummary({ started: 0 });
+    }
+    setPhase("done");
+  };
+
+  const grade = (override: boolean) => {
+    const q = queue[0];
+    if (!q || feedback !== null) return;
+    const isM = q.type === "meaning";
+    const g = override
+      ? "correct"
+      : isM
+        ? gradeMeaning(input, q.item.translations.length ? q.item.translations : [q.item.translation_primary])
+        : gradeProduction(input, q.item.lemma);
+
+    if (g === "near_miss") {
+      setNearMiss(true);
+      return;
+    }
+    setNearMiss(false);
+    const key = `${q.item.id}:${q.type}`;
+    if (!quizStats.current.first.has(key)) quizStats.current.first.set(key, g === "correct");
+    setFeedback({
+      correct: g === "correct",
+      expected: isM ? q.item.translation_primary : q.item.stressed_form,
+    });
+  };
+
+  const next = async () => {
+    if (queue.length === 0) return;
+    const wasCorrect = feedback?.correct ?? false;
+    const [first, ...rest] = queue;
+    const newQueue = wasCorrect ? rest : [...rest, first]; // re-drill misses
+    setInput("");
+    setFeedback(null);
+    setNearMiss(false);
+    if (newQueue.length === 0) {
+      setQueue(newQueue);
+      await commit();
+    } else {
+      setQueue(newQueue);
+    }
+  };
+
+  // Enter drives the lesson even when nothing is focused (auto-focus is not
+  // guaranteed in every browser): next info card, submit the typed answer,
+  // advance from feedback. Skipped while focus is in a field or on a button,
+  // whose native click already fires on Enter.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || e.repeat) return;
+      const el = document.activeElement;
+      if (
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLButtonElement
+      )
+        return;
+      if (phase === "info") nextInfo();
+      else if (phase === "quiz") {
+        if (feedback !== null) next();
+        else if (input) grade(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   if (items === null) return <Centered>loading lessons...</Centered>;
   if (items.length === 0)
     return (
@@ -134,26 +221,12 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
           >
             Назад
           </button>
-          {last ? (
-            <button
-              onClick={() => {
-                const q = buildQueue(items);
-                setQuizTotal(q.length);
-                setQueue(q);
-                setPhase("quiz");
-              }}
-              className="flex-1 rounded-xl bg-sb-ink px-5 py-3 font-bold text-white"
-            >
-              Начать квиз · Start quiz
-            </button>
-          ) : (
-            <button
-              onClick={() => setInfoIdx((i) => i + 1)}
-              className="flex-1 rounded-xl bg-sb-ink px-5 py-3 font-bold text-white"
-            >
-              Далее · Next
-            </button>
-          )}
+          <button
+            onClick={nextInfo}
+            className="flex-1 rounded-xl bg-sb-ink px-5 py-3 font-bold text-white"
+          >
+            {last ? "Начать квиз · Start quiz" : "Далее · Next"}
+          </button>
         </div>
       </div>
     );
@@ -182,53 +255,6 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
   // ---- quiz phase ----
   const cur = queue[0];
   const isMeaning = cur.type === "meaning";
-
-  const commit = async () => {
-    setPhase("committing");
-    try {
-      const res = await completeLessons(items.map((i) => i.id));
-      setSummary({ started: res.started.length });
-    } catch {
-      setSummary({ started: 0 });
-    }
-    setPhase("done");
-  };
-
-  const grade = (override: boolean) => {
-    const g = override
-      ? "correct"
-      : isMeaning
-        ? gradeMeaning(input, cur.item.translations.length ? cur.item.translations : [cur.item.translation_primary])
-        : gradeProduction(input, cur.item.lemma);
-
-    if (g === "near_miss") {
-      setNearMiss(true);
-      return;
-    }
-    setNearMiss(false);
-    const key = `${cur.item.id}:${cur.type}`;
-    if (!quizStats.current.first.has(key)) quizStats.current.first.set(key, g === "correct");
-    setFeedback({
-      correct: g === "correct",
-      expected: isMeaning ? cur.item.translation_primary : cur.item.stressed_form,
-    });
-  };
-
-  const next = async () => {
-    const wasCorrect = feedback?.correct ?? false;
-    const [first, ...rest] = queue;
-    const newQueue = wasCorrect ? rest : [...rest, first]; // re-drill misses
-    setInput("");
-    setFeedback(null);
-    setNearMiss(false);
-    if (newQueue.length === 0) {
-      setQueue(newQueue);
-      await commit();
-    } else {
-      setQueue(newQueue);
-    }
-  };
-
   const quizProgress = quizTotal > 0 ? Math.round(((quizTotal - queue.length) / quizTotal) * 100) : 0;
 
   return (

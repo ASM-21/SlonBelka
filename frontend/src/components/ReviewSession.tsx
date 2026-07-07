@@ -78,10 +78,77 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
     setPhase("answering");
   };
 
-  // Enter advances from feedback. Skipped while focus is in a field (the
-  // details panel) or on a button, whose native click already fires on Enter.
+  const send = async (override: boolean) => {
+    const cur = queue?.[0];
+    if (!cur || sending.current) return;
+    sending.current = true;
+    const clientEventId = crypto.randomUUID();
+    const answeredAt = new Date().toISOString();
+    try {
+      const res = await submitReview({
+        item_id: cur.item_id,
+        question_type: cur.question_type,
+        answer: input,
+        client_event_id: clientEventId,
+        override,
+      });
+      if (res.status === "near_miss") {
+        setNearMiss(true);
+        return;
+      }
+      setNearMiss(false);
+      setResult(res);
+      setPhase("feedback");
+
+      // Record session outcomes (first attempt per question for accuracy).
+      const st = stats.current;
+      const key = `${cur.item_id}:${cur.question_type}`;
+      if (!st.first.has(key)) st.first.set(key, res.correct);
+      if (res.pass_complete) {
+        // A word is clean only if nothing asked for it this session was missed.
+        let clean = true;
+        for (const [k, ok] of st.first) {
+          if (k.startsWith(`${cur.item_id}:`) && !ok) clean = false;
+        }
+        st.cleared.set(cur.item_id, clean);
+      }
+      if (res.passed) st.passed += 1;
+      if (res.burned) st.burned += 1;
+      if (res.leveled_up && res.current_level) st.levelUp = res.current_level;
+    } catch {
+      // Offline or the request failed: queue the answer for sync and move on.
+      // Reviews don't ship the answer, so grading stays server-side; offline we
+      // just record it and advance without revealing correctness.
+      await enqueue({
+        item_id: cur.item_id,
+        question_type: cur.question_type,
+        answer: input,
+        client_event_id: clientEventId,
+        answered_at: answeredAt,
+        override: override ?? false,
+      });
+      setNearMiss(false);
+      setPending((p) => p + 1);
+      setPhase("offline");
+    } finally {
+      sending.current = false;
+    }
+  };
+
+  const contOffline = () => {
+    // We don't know correctness offline; drop the item and let a later online
+    // /reviews fetch resurface anything that wasn't passed.
+    setQueue((q) => (q ? q.slice(1) : q));
+    setInput("");
+    setShowInfo(false);
+    setPhase("answering");
+  };
+
+  // Enter drives the session even when nothing is focused (auto-focus is not
+  // guaranteed in every browser): it submits the typed answer, advances from
+  // feedback, and continues after an offline save. Skipped while focus is in
+  // a field (typing) or on a button, whose native click already fires on Enter.
   useEffect(() => {
-    if (phase !== "feedback") return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Enter" || e.repeat) return;
       const el = document.activeElement;
@@ -91,7 +158,9 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
         el instanceof HTMLButtonElement
       )
         return;
-      cont();
+      if (phase === "feedback") cont();
+      else if (phase === "offline") contOffline();
+      else if (input) send(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -149,70 +218,6 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
       return;
     }
     setExited(true);
-  };
-
-  const send = async (override: boolean) => {
-    if (sending.current) return;
-    sending.current = true;
-    const clientEventId = crypto.randomUUID();
-    const answeredAt = new Date().toISOString();
-    try {
-      const res = await submitReview({
-        item_id: cur.item_id,
-        question_type: cur.question_type,
-        answer: input,
-        client_event_id: clientEventId,
-        override,
-      });
-      if (res.status === "near_miss") {
-        setNearMiss(true);
-        return;
-      }
-      setNearMiss(false);
-      setResult(res);
-      setPhase("feedback");
-
-      // Record session outcomes (first attempt per question for accuracy).
-      const key = `${cur.item_id}:${cur.question_type}`;
-      if (!st.first.has(key)) st.first.set(key, res.correct);
-      if (res.pass_complete) {
-        // A word is clean only if nothing asked for it this session was missed.
-        let clean = true;
-        for (const [k, ok] of st.first) {
-          if (k.startsWith(`${cur.item_id}:`) && !ok) clean = false;
-        }
-        st.cleared.set(cur.item_id, clean);
-      }
-      if (res.passed) st.passed += 1;
-      if (res.burned) st.burned += 1;
-      if (res.leveled_up && res.current_level) st.levelUp = res.current_level;
-    } catch {
-      // Offline or the request failed: queue the answer for sync and move on.
-      // Reviews don't ship the answer, so grading stays server-side; offline we
-      // just record it and advance without revealing correctness.
-      await enqueue({
-        item_id: cur.item_id,
-        question_type: cur.question_type,
-        answer: input,
-        client_event_id: clientEventId,
-        answered_at: answeredAt,
-        override: override ?? false,
-      });
-      setNearMiss(false);
-      setPending((p) => p + 1);
-      setPhase("offline");
-    } finally {
-      sending.current = false;
-    }
-  };
-
-  const contOffline = () => {
-    // We don't know correctness offline; drop the item and let a later online
-    // /reviews fetch resurface anything that wasn't passed.
-    setQueue((q) => (q ? q.slice(1) : q));
-    setInput("");
-    setShowInfo(false);
-    setPhase("answering");
   };
 
   return (

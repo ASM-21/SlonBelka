@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getSettings, practice, ReviewItem, updateSettings } from "../lib/api";
 import { useFetch } from "../lib/useFetch";
 import { Layout } from "./CyrillicKeyboard";
@@ -34,6 +34,48 @@ export default function PracticeSession({
     });
   };
 
+  const submit = async () => {
+    const cur = queue[0];
+    if (!cur || feedback !== null) return;
+    try {
+      const res = await practice(cur.item_id, cur.question_type, input);
+      setFeedback({ correct: res.correct, expected: res.expected, stressed: res.stressed_form });
+    } catch {
+      /* keep the input; the user can submit again */
+    }
+  };
+
+  const cont = () => {
+    if (queue.length === 0) return;
+    const correct = feedback?.correct ?? false;
+    setQueue((q) => {
+      const [first, ...rest] = q;
+      return correct ? rest : [...rest, first];
+    });
+    setInput("");
+    setFeedback(null);
+  };
+
+  // Enter drives practice even when nothing is focused: submit the typed
+  // answer, advance from feedback. Skipped while focus is in a field or on a
+  // button, whose native click already fires on Enter.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || e.repeat) return;
+      const el = document.activeElement;
+      if (
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLButtonElement
+      )
+        return;
+      if (feedback !== null) cont();
+      else if (input) submit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   if (queue.length === 0)
     return (
       <div className="mx-auto mt-24 max-w-md px-6 text-center text-sb-muted">
@@ -46,25 +88,6 @@ export default function PracticeSession({
 
   const cur = queue[0];
   const isMeaning = cur.question_type === "meaning";
-
-  const submit = async () => {
-    try {
-      const res = await practice(cur.item_id, cur.question_type, input);
-      setFeedback({ correct: res.correct, expected: res.expected, stressed: res.stressed_form });
-    } catch {
-      /* keep the input; the user can submit again */
-    }
-  };
-
-  const cont = () => {
-    const correct = feedback?.correct ?? false;
-    setQueue((q) => {
-      const [first, ...rest] = q;
-      return correct ? rest : [...rest, first];
-    });
-    setInput("");
-    setFeedback(null);
-  };
 
   return (
     <div className="mx-auto mt-10 w-full max-w-md px-5">
