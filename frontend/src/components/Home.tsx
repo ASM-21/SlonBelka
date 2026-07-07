@@ -79,6 +79,20 @@ export default function Home({
         </div>
       )}
 
+      {lp?.cleared && (
+        <button
+          onClick={onUpgrade}
+          className="mb-5 w-full rounded-2xl bg-gradient-to-r from-sb-accent to-sb-gold p-4 text-left text-white shadow-lg shadow-sb-accent/30"
+        >
+          <div className="text-sm font-bold">
+            Уровень {lp.level} пройден! · Level {lp.level} cleared!
+          </div>
+          <div className="mt-0.5 text-xs opacity-90">
+            Premium unlocks level {lp.level + 1} and everything beyond.
+          </div>
+        </button>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <HeroTile
           ru="Уроки"
