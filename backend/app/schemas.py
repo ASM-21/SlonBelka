@@ -232,6 +232,10 @@ class VacationRequest(BaseModel):
     on: bool
 
 
+class AccountDeleteRequest(BaseModel):
+    password: str = Field(max_length=128)
+
+
 class VacationResponse(BaseModel):
     frozen: bool
 

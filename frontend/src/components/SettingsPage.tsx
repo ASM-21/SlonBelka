@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getSettings, Settings, setVacation, updateSettings } from "../lib/api";
+import { deleteAccount, exportAccount, getSettings, Settings, setVacation, token, updateSettings } from "../lib/api";
 import { enableReminders, pushSupported } from "../lib/push";
 import { useFetch } from "../lib/useFetch";
 import { LegalDoc } from "./LegalPage";
@@ -8,13 +8,51 @@ import { PageHeader } from "./ui";
 export default function SettingsPage({
   onDone,
   onShowLegal,
+  onAccountDeleted,
 }: {
   onDone: () => void;
   onShowLegal: (doc: LegalDoc) => void;
+  onAccountDeleted: () => void;
 }) {
   const { status, data: s, setData: setS, retry } = useFetch(getSettings);
   const [saving, setSaving] = useState(false);
   const [reminderMsg, setReminderMsg] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [dangerMsg, setDangerMsg] = useState<string | null>(null);
+
+  const downloadExport = async () => {
+    setDangerMsg(null);
+    try {
+      const data = await exportAccount();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `slonbelka-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setDangerMsg("Export failed. Try again in a moment.");
+    }
+  };
+
+  const confirmDelete = async () => {
+    setSaving(true);
+    setDangerMsg(null);
+    try {
+      await deleteAccount(deletePassword);
+      token.clear();
+      onAccountDeleted();
+    } catch (e) {
+      setDangerMsg(
+        String(e).includes("403")
+          ? "That password is incorrect."
+          : "Could not delete the account. Try again in a moment.",
+      );
+      setSaving(false);
+    }
+  };
 
   if (status === "loading") return <Centered onDone={onDone}>loading settings...</Centered>;
   if (status === "error" || !s)
@@ -138,6 +176,69 @@ export default function SettingsPage({
           >
             Content licenses and attribution
           </button>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-sb-line bg-sb-card p-4">
+        <div className="font-semibold text-sb-ink">Your data</div>
+        <div className="mt-1 text-sm text-sb-muted">
+          Download everything tied to your account as JSON: profile, settings, and full study
+          history.
+        </div>
+        <button
+          onClick={downloadExport}
+          className="mt-3 rounded-lg bg-sb-ink px-4 py-2 text-sm font-bold text-white"
+        >
+          Download my data
+        </button>
+
+        <div className="mt-5 border-t border-sb-line pt-4">
+          <div className="font-semibold text-red-700">Delete account</div>
+          <div className="mt-1 text-sm text-sb-muted">
+            Permanently deletes your account and all progress. This cannot be undone.
+          </div>
+          {!confirmingDelete ? (
+            <button
+              onClick={() => {
+                setDangerMsg(null);
+                setConfirmingDelete(true);
+              }}
+              className="mt-3 rounded-lg border border-red-700 px-4 py-2 text-sm font-bold text-red-700"
+            >
+              Delete my account
+            </button>
+          ) : (
+            <div className="mt-3 flex flex-col gap-2">
+              <input
+                type="password"
+                placeholder="confirm your password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                className="w-full rounded-xl border border-sb-line bg-sb-card px-4 py-2.5 text-sm text-sb-ink outline-none focus:border-sb-muted"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={confirmDelete}
+                  disabled={saving || !deletePassword}
+                  className="rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+                >
+                  Permanently delete
+                </button>
+                <button
+                  onClick={() => {
+                    setConfirmingDelete(false);
+                    setDeletePassword("");
+                    setDangerMsg(null);
+                  }}
+                  disabled={saving}
+                  className="rounded-lg border border-sb-line px-4 py-2 text-sm font-bold text-sb-muted"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+          {dangerMsg && <p className="mt-2 text-sm text-red-700">{dangerMsg}</p>}
         </div>
       </div>
     </div>

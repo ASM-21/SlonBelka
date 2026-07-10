@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.db import Base, engine
 from app.middleware import BodySizeLimitMiddleware
-from app.routers import auth, billing, dashboard, items, lessons, push, reviews, settings as settings_router, stats, study
+from app.routers import account, auth, billing, dashboard, items, lessons, push, reviews, settings as settings_router, stats, study
 
 # Import models so they register on Base before create_all.
 from app import models  # noqa: F401
@@ -64,6 +64,7 @@ app.include_router(items.router)
 app.include_router(push.router)
 app.include_router(stats.router)
 app.include_router(settings_router.router)
+app.include_router(account.router)
 
 
 @app.get("/health", tags=["health"])

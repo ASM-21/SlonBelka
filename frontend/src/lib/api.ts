@@ -395,5 +395,10 @@ export const getStats = () => api<Stats>("/stats");
 export const getSettings = () => api<Settings>("/settings");
 export const updateSettings = (patch: Partial<Omit<Settings, "frozen">>) =>
   api<Settings>("/settings", { method: "PATCH", body: JSON.stringify(patch) });
+export const exportAccount = () => api<Record<string, unknown>>("/account/export");
+
+export const deleteAccount = (password: string) =>
+  api<void>("/account/delete", { method: "POST", body: JSON.stringify({ password }) });
+
 export const setVacation = (on: boolean) =>
   api<{ frozen: boolean }>("/settings/vacation", { method: "POST", body: JSON.stringify({ on }) });

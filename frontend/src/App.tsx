@@ -113,7 +113,16 @@ export default function App() {
       {view === "reviews" && <ReviewSession onDone={home} />}
       {view === "leeches" && <LeechesPage onDone={home} />}
       {view === "browse" && <ItemBrowser onDone={home} />}
-      {view === "settings" && <SettingsPage onDone={home} onShowLegal={setLegalDoc} />}
+      {view === "settings" && (
+        <SettingsPage
+          onDone={home}
+          onShowLegal={setLegalDoc}
+          onAccountDeleted={() => {
+            setView("home");
+            setAuthed(false);
+          }}
+        />
+      )}
       {view === "upgrade" && (
         <UpgradePage
           onDone={() => {
