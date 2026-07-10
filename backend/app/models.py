@@ -72,6 +72,9 @@ class Item(Base):
 
 class ExampleSentence(Base):
     __tablename__ = "example_sentences"
+    __table_args__ = (
+        UniqueConstraint("item_id", "source_ref", name="uq_sentence_item_source"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     item_id: Mapped[int] = mapped_column(ForeignKey("items.id"), index=True)
@@ -80,6 +83,9 @@ class ExampleSentence(Base):
     audio_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     source: Mapped[str | None] = mapped_column(String(64), nullable=True)
     license: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Stable identity within an item for content upserts, mirroring the item
+    # external_id rule at sentence granularity (e.g. "tatoeba:123456").
+    source_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     item: Mapped["Item"] = relationship(back_populates="sentences")
 
