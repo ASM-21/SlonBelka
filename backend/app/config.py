@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # Error tracking. Unset means Sentry is off (dev, tests).
     sentry_dsn: str | None = None
 
+    # Redis for cross-process rate limiting. Unset means in-memory (dev, tests).
+    redis_url: str | None = None
+
     # Largest accepted request body. Review sync batches and Stripe webhooks
     # are the biggest legitimate payloads and stay well under this.
     max_body_bytes: int = 65536
