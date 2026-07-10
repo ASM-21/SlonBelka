@@ -58,6 +58,14 @@ class Settings(BaseSettings):
     resend_api_key: str | None = None
     email_from: str = "Slonbelka <onboarding@resend.dev>"
 
+    # Web push (VAPID). Both keys unset means push delivery is off.
+    vapid_public_key: str | None = None
+    vapid_private_key: str | None = None
+    vapid_subject: str = "mailto:asmspartan21@gmail.com"
+
+    # Shared secret for /internal/* task endpoints (cron triggers).
+    internal_task_token: str | None = None
+
     # Largest accepted request body. Review sync batches and Stripe webhooks
     # are the biggest legitimate payloads and stay well under this.
     max_body_bytes: int = 65536
