@@ -8,13 +8,16 @@ Done and tested:
 - Full app loop: register, verify, lessons, reviews, dashboard, leeches, extra study, item browser, user synonyms, burned-item resurrection, stats, settings, vacation mode, offline reviews with sync.
 - SRS engine, answer grading (Russian stress and ё/е insensitive), auth with refresh-token rotation, in-memory rate limiting, Stripe billing scaffold with entitlements.
 - Stable item identity: items carry a unique `external_id`; all content loads through `app/content/importer.py::upsert_items`, which upserts on that key and never reassigns row ids. Migration `3284f0181e9e` adds it safely on empty and populated databases.
-- 174 backend tests, 26 frontend tests, four Alembic migrations.
+- Backend and frontend test suites plus pipeline tests, all run in CI on every push and PR to main; six Alembic migrations.
+- Infrastructure code: Sentry error tracking (D4), Redis-backed rate limiting (D1), real email through Resend (D2), web push sender with a cron-triggered sweep (D3), request body size limits and input length caps, CI (D5).
+- Launch code: account deletion and data export (E1), Stripe checkout return handling in the SPA (query params on the root URL).
+- Example sentences (C2) code: Tatoeba join stage in `pipeline/sentences.py`, idempotent loader `app/content/sentences.py` keyed on `(item, source_ref)`.
+All of the above no-op safely in dev and tests when their env vars are unset.
 
 Not built yet, in priority order:
-- Real content: only ~14 demo words. No lemmatized frequency deck, no level design, no mnemonics, no example sentences.
-- Audio: model fields and the source/license/attribution table exist, but there is no ingestion, normalization, storage, or serving.
-- Production infrastructure: rate limiting is in-memory, email and push are stubs, no object storage or CDN, no error tracking, no CI, no deploy.
-- Launch requirements: no account deletion or data export, no onboarding, email verification is off.
+- Real content in this repo: only ~14 demo words seeded here. No mnemonics; example-sentence content still needs the Tatoeba artifact generated and loaded.
+- Audio: model fields and the source/license/attribution table exist, but this repo has no ingestion, normalization, storage, or serving code.
+- Launch requirements: no onboarding, email verification is off by default.
 
 ## Two decisions to lock before writing pipeline code
 
@@ -87,10 +90,10 @@ Why: the ordering is the product; a large unordered list is not.
 Steps: pick a tight v1 size (1000 to 1500 words is a reasonable target), order by a blend of frequency and teachability, and assign words to levels with a consistent words-per-level count. The SRS engine already gates level unlocks; this task is the curriculum design that fills it.
 Acceptance: every word has a level and a place in the ordering; level sizes are consistent; the free tier boundary (`free_level_limit`) lands somewhere sensible.
 
-### C2. Example sentences
+### C2. Example sentences — CODE DONE, content load pending
 Goal: one or two example sentences per word.
-Where: `ExampleSentence` model.
-Steps: source sentences from Tatoeba (CC-BY, attribution required) for text; generate sentence audio with TTS (not Tatoeba audio). Prefer sentences that use already-taught vocabulary.
+Where: `ExampleSentence` model, `pipeline/sentences.py` (Tatoeba join), `app/content/sentences.py::upsert_sentences` (idempotent loader keyed on `(item, source_ref)`), `python -m app.load_sentences`.
+Remaining: download the Tatoeba exports, generate and review the artifact, load it into production; sentence TTS audio is a later stage (`audio_url` stays NULL until then). Attribution string ships in the artifact.
 Acceptance: each word has at least one example with translation and audio, attribution recorded.
 
 ### C3. Mnemonics
@@ -101,30 +104,25 @@ Acceptance: whatever ships is genuinely helpful; nothing filler is shipped just 
 
 ## Phase D: Infrastructure and ops
 
-### D1. Rate limiting on Redis
-Goal: replace the in-memory limiter with a shared store so limits hold across processes.
-Where: `app/services/ratelimit.py`.
-Acceptance: limits enforced with multiple workers; existing rate-limit tests still pass.
+### D1. Rate limiting on Redis — DONE (code)
+Where: `app/services/ratelimit.py`. With `REDIS_URL` set the limiter is a Redis fixed window (atomic Lua INCR+PEXPIRE) shared across workers, failing open on Redis errors; without it the in-memory window still serves dev and tests.
+Remaining: set `REDIS_URL` on the host and confirm 429s under load.
 
-### D2. Email provider
-Goal: real verification and password-reset email.
-Where: `app/services/email.py` (currently a dev outbox stub).
-Acceptance: verification and reset emails deliver in a real environment; the dev outbox stays available for tests.
+### D2. Email provider — DONE (code)
+Where: `app/services/email.py`. With `RESEND_API_KEY` set, mail goes through the Resend API (`EMAIL_FROM` configurable); failures are logged, never raised. The dev outbox stays for tests. Links use query params on the SPA root (`/?verify=`, `/?reset=`).
+Remaining: set the key, smoke-test delivery, verify a sending domain later.
 
-### D3. Push sender and scheduler
-Goal: actually send the review-due web push notifications.
-Where: subscribe endpoint and service worker handler already exist; add a sender plus a scheduler, and add VAPID keys to config (not present yet).
-Acceptance: a due-reviews notification is delivered to a subscribed device on schedule.
+### D3. Push sender and scheduler — DONE (code)
+Where: `app/services/push.py` (pywebpush, VAPID keys in config, dead subscriptions pruned, 6h per-user cooldown in the settings JSON), triggered by `POST /internal/push/run` with `X-INTERNAL-TOKEN`, fired by `.github/workflows/push-reminders.yml` every 30 minutes.
+Remaining: set the VAPID keys, `INTERNAL_TASK_TOKEN`, and the GitHub secrets; confirm delivery on a real device.
 
-### D4. Observability
-Goal: know when things break.
-Steps: add structured logging and error tracking (for example Sentry) to the backend, and basic request metrics.
-Acceptance: an unhandled error surfaces in the error tracker with a stack trace and request context.
+### D4. Observability — DONE (code)
+Where: `app/main.py` initializes Sentry when `SENTRY_DSN` is set (environment tag, PII off).
+Remaining: set the DSN and trigger one test error to confirm capture. Structured request logging and metrics are still open.
 
-### D5. CI
-Goal: never merge a red build.
-Steps: on every push, run the backend suite, the frontend typecheck, build, and vitest, and a migration check (fresh chain applies).
-Acceptance: CI runs all of the above and blocks merge on failure.
+### D5. CI — DONE
+Where: `.github/workflows/ci.yml`. Backend pytest plus pipeline tests, frontend typecheck, build, and vitest, and a fresh-chain migration check, on every push and PR to main.
+Remaining: optionally require the checks via branch protection.
 
 ### D6. Deploy
 Goal: a running production environment.
@@ -133,11 +131,9 @@ Acceptance: the app is reachable, migrations run on deploy, and audio serves fro
 
 ## Phase E: Launch readiness
 
-### E1. Account deletion and data export
-Goal: a user can delete their account and export their data.
-Why: required for app stores and common privacy regimes.
-Where: new endpoints under the account area; delete must remove dependent rows (states, review and lesson events, tokens, synonyms, push subscriptions, subscription).
-Acceptance: deletion removes all user data and cannot be triggered accidentally; export returns the user's data in a portable format.
+### E1. Account deletion and data export — DONE
+Where: `GET /account/export` (portable JSON keyed by item `external_id`) and `POST /account/delete` (password re-entry, best-effort Stripe cancel, removes every dependent row and revokes all sessions), surfaced in Settings with a two-step confirm.
+Acceptance met: deletion removes all user data and cannot be triggered accidentally; export returns the user's data in a portable format.
 
 ### E2. Enforce email verification for paid features
 Goal: turn on the verification gate that already exists.
@@ -177,10 +173,16 @@ Defaults are dev-friendly; set real values for production.
 - `JWT_SECRET`: required strong value in production. `JWT_ALGORITHM`, `ACCESS_TOKEN_MINUTES`, `REFRESH_TOKEN_DAYS` have sane defaults.
 - `REQUIRE_EMAIL_VERIFICATION`: off by default; on in production for paid features.
 - `FREE_LEVEL_LIMIT`: levels at or below this are free.
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY`, `STRIPE_PRICE_LIFETIME`, `BILLING_SUCCESS_URL`, `BILLING_CANCEL_URL`: billing.
-- `FRONTEND_ORIGIN`: CORS origin for the frontend.
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY`, `STRIPE_PRICE_LIFETIME`, `BILLING_SUCCESS_URL`, `BILLING_CANCEL_URL`: billing. The success and cancel URLs must be query params on the SPA root (for example `https://app.example/?billing=success`) because the frontend has no path routing.
+- `FRONTEND_ORIGIN`: CORS origin for the frontend, also the base for email links.
 - `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`: TTS.
-- To add for production, not yet in config: object storage credentials and bucket, CDN base URL, VAPID public and private keys for push, and the error-tracking DSN.
+- `SENTRY_DSN`: error tracking; unset means Sentry is off.
+- `REDIS_URL`: cross-process rate limiting; unset means in-memory.
+- `RESEND_API_KEY`, `EMAIL_FROM`: real email; unset means the dev outbox.
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`: web push delivery; both keys unset means push is off. The frontend needs `VITE_VAPID_PUBLIC_KEY` at build time.
+- `INTERNAL_TASK_TOKEN`: shared secret for `/internal/*` cron endpoints; unset means they answer 503.
+- `MAX_BODY_BYTES`: request body cap, 64 KB default.
+- Still not in config (owner-side only): object storage credentials and bucket, CDN base URL.
 
 ### Audio pipeline spec (summary)
 Native first for headwords, TTS labeled fallback, TTS for sentences. Normalize loudness, trim silence, transcode to web formats, store in object storage behind a CDN, record source and license per asset, cache for offline within a size bound.
