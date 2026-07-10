@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db import Base, engine
+from app.middleware import BodySizeLimitMiddleware
 from app.routers import auth, billing, dashboard, items, lessons, push, reviews, settings as settings_router, stats, study
 
 # Import models so they register on Base before create_all.
@@ -41,6 +42,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Slonbelka API", version="0.1.0", lifespan=lifespan)
 
+# CORS is registered after the body limit so it runs outermost and 413
+# responses still carry CORS headers (Starlette treats the last-added
+# middleware as the outermost layer).
+app.add_middleware(BodySizeLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_origin],

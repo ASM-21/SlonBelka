@@ -10,13 +10,13 @@ from pydantic import BaseModel, EmailStr, Field
 # ---- auth ----
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: str = Field(min_length=8, max_length=128)
     accepted_terms: bool = False
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(max_length=128)
 
 
 class TokenResponse(BaseModel):
@@ -26,15 +26,15 @@ class TokenResponse(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(max_length=256)
 
 
 class LogoutRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(max_length=256)
 
 
 class VerifyEmailRequest(BaseModel):
-    token: str
+    token: str = Field(max_length=256)
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -42,8 +42,8 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    token: str
-    new_password: str = Field(min_length=8)
+    token: str = Field(max_length=256)
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class UserResponse(BaseModel):
@@ -88,8 +88,8 @@ class ReviewItem(BaseModel):
 class SubmitReviewRequest(BaseModel):
     item_id: int
     question_type: str
-    answer: str = ""
-    client_event_id: str
+    answer: str = Field(default="", max_length=256)
+    client_event_id: str = Field(min_length=1, max_length=64)  # matches the column width
     answered_at: datetime | None = None
     override: bool = False
 
@@ -158,7 +158,7 @@ class LeechItem(BaseModel):
 class PracticeRequest(BaseModel):
     item_id: int
     question_type: str
-    answer: str = ""
+    answer: str = Field(default="", max_length=256)
 
 
 class PracticeResult(BaseModel):
@@ -169,8 +169,8 @@ class PracticeResult(BaseModel):
 
 
 class MnemonicRequest(BaseModel):
-    meaning_mnemonic: str | None = None
-    reading_mnemonic: str | None = None
+    meaning_mnemonic: str | None = Field(default=None, max_length=2000)
+    reading_mnemonic: str | None = Field(default=None, max_length=2000)
 
 
 class MnemonicResponse(BaseModel):
@@ -319,7 +319,7 @@ class SynonymsResponse(BaseModel):
 
 # ---- push notifications ----
 class PushSubscribeRequest(BaseModel):
-    endpoint: str
+    endpoint: str = Field(max_length=1024)
     keys: dict  # { p256dh, auth }
 
 

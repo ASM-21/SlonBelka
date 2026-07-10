@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     # Error tracking. Unset means Sentry is off (dev, tests).
     sentry_dsn: str | None = None
 
+    # Largest accepted request body. Review sync batches and Stripe webhooks
+    # are the biggest legitimate payloads and stay well under this.
+    max_body_bytes: int = 65536
+
     @model_validator(mode="after")
     def _require_prod_secret(self) -> "Settings":
         if self.environment == "prod" and self.jwt_secret == _DEFAULT_SECRET:
