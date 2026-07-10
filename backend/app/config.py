@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     stripe_secret_key: str | None = None
     stripe_webhook_secret: str | None = None
 
+    # Error tracking. Unset means Sentry is off (dev, tests).
+    sentry_dsn: str | None = None
+
     @model_validator(mode="after")
     def _require_prod_secret(self) -> "Settings":
         if self.environment == "prod" and self.jwt_secret == _DEFAULT_SECRET:

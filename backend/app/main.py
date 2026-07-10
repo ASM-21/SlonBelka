@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
+import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -18,6 +19,16 @@ from app.routers import auth, billing, dashboard, items, lessons, push, reviews,
 
 # Import models so they register on Base before create_all.
 from app import models  # noqa: F401
+
+# No DSN means Sentry stays off (dev, tests). The FastAPI/Starlette
+# integration is enabled automatically by the SDK.
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.environment,
+        send_default_pii=False,
+        traces_sample_rate=0.0,
+    )
 
 
 @asynccontextmanager
