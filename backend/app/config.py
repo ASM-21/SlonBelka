@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     # Redis for cross-process rate limiting. Unset means in-memory (dev, tests).
     redis_url: str | None = None
 
+    # Resend for real email. Unset means the dev outbox (dev, tests). The
+    # default sender works before a custom domain is verified, but Resend
+    # then only delivers to the account owner's own address.
+    resend_api_key: str | None = None
+    email_from: str = "Slonbelka <onboarding@resend.dev>"
+
     # Largest accepted request body. Review sync batches and Stripe webhooks
     # are the biggest legitimate payloads and stay well under this.
     max_body_bytes: int = 65536
