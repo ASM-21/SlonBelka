@@ -12,7 +12,7 @@ export default function AuthScreen({
   onAuthed: () => void;
   onShowLegal: (doc: LegalDoc) => void;
 }) {
-  const [mode, setMode] = useState<Mode>("register");
+  const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [resetToken, setResetToken] = useState("");
