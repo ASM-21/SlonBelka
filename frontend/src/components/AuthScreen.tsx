@@ -3,19 +3,25 @@ import { forgotPassword, login, register, resetPassword, token } from "../lib/ap
 import { LegalDoc } from "./LegalPage";
 import { MascotPlaceholder } from "./ui";
 
-type Mode = "login" | "register" | "forgot" | "reset";
+export type Mode = "login" | "register" | "forgot" | "reset";
 
 export default function AuthScreen({
   onAuthed,
   onShowLegal,
+  initialMode,
+  initialResetToken,
 }: {
   onAuthed: () => void;
   onShowLegal: (doc: LegalDoc) => void;
+  // Set when the user arrives via a password-reset email link, so they land
+  // directly on the new-password form with the code prefilled.
+  initialMode?: Mode;
+  initialResetToken?: string;
 }) {
-  const [mode, setMode] = useState<Mode>("login");
+  const [mode, setMode] = useState<Mode>(initialMode ?? "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [resetToken, setResetToken] = useState("");
+  const [resetToken, setResetToken] = useState(initialResetToken ?? "");
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);

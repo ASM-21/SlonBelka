@@ -33,8 +33,10 @@ class Settings(BaseSettings):
     stripe_price_monthly: str | None = None
     stripe_price_yearly: str | None = None
     stripe_price_lifetime: str | None = None
-    billing_success_url: str = "http://localhost:5173/billing/success"
-    billing_cancel_url: str = "http://localhost:5173/billing/cancel"
+    # Query params on the SPA root: the frontend has no path routing, so
+    # App.tsx reads ?billing=... on mount (frontend/src/lib/urlParams.ts).
+    billing_success_url: str = "http://localhost:5173/?billing=success"
+    billing_cancel_url: str = "http://localhost:5173/?billing=cancel"
 
     frontend_origin: str = "http://localhost:5173"
 

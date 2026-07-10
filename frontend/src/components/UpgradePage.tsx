@@ -10,7 +10,14 @@ const PLANS = [
   { id: "lifetime", name: "Lifetime", blurb: "One payment, forever", price: "$120", cadence: "once" },
 ];
 
-export default function UpgradePage({ onDone }: { onDone: () => void }) {
+export default function UpgradePage({
+  onDone,
+  result,
+}: {
+  onDone: () => void;
+  // Set when the user just returned from Stripe Checkout (?billing=...).
+  result?: "success" | "cancel";
+}) {
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -18,6 +25,25 @@ export default function UpgradePage({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     getBillingStatus().then(setStatus).catch(() => setStatus(null));
   }, []);
+
+  // After a successful checkout the webhook can lag behind the redirect, so
+  // poll briefly until the entitlement shows up.
+  useEffect(() => {
+    if (result !== "success") return;
+    let tries = 0;
+    const id = setInterval(() => {
+      tries += 1;
+      getBillingStatus()
+        .then((s) => {
+          setStatus(s);
+          if (s.is_premium || tries >= 5) clearInterval(id);
+        })
+        .catch(() => {
+          if (tries >= 5) clearInterval(id);
+        });
+    }, 2000);
+    return () => clearInterval(id);
+  }, [result]);
 
   const startCheckout = async (plan: string) => {
     setBusy(true);
@@ -47,6 +73,20 @@ export default function UpgradePage({ onDone }: { onDone: () => void }) {
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-10 pt-6">
       <PageHeader ru="Слонбелка Премиум" en="Slonbelka Premium" onBack={onDone} />
+
+      {result === "success" && (
+        <p className="mb-4 rounded-xl border border-sb-line bg-sb-card px-4 py-2.5 text-center text-sm text-sb-ink">
+          Оплата прошла, спасибо!{" "}
+          <span className="text-sb-muted">
+            {status?.is_premium ? "Premium is active." : "Payment received, activating Premium…"}
+          </span>
+        </p>
+      )}
+      {result === "cancel" && (
+        <p className="mb-4 rounded-xl border border-sb-line bg-sb-card px-4 py-2.5 text-center text-sm text-sb-muted">
+          Checkout was canceled. Nothing was charged.
+        </p>
+      )}
 
       {status?.is_premium ? (
         <div className="rounded-3xl border border-sb-line bg-sb-card p-6 text-center">

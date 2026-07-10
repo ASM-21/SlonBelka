@@ -235,6 +235,12 @@ export const logout = async () => {
 export const forgotPassword = (email: string) =>
   api<{ sent: boolean }>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) });
 
+export const verifyEmail = (verifyToken: string) =>
+  api<{ verified: boolean }>("/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ token: verifyToken }),
+  });
+
 export const resetPassword = (resetToken: string, newPassword: string) =>
   api<{ reset: boolean }>("/auth/reset-password", {
     method: "POST",
