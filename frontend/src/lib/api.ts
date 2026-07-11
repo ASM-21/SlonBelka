@@ -241,6 +241,9 @@ export const verifyEmail = (verifyToken: string) =>
     body: JSON.stringify({ token: verifyToken }),
   });
 
+export const resendVerification = () =>
+  api<{ verified?: boolean; sent?: boolean }>("/auth/resend-verification", { method: "POST" });
+
 export const resetPassword = (resetToken: string, newPassword: string) =>
   api<{ reset: boolean }>("/auth/reset-password", {
     method: "POST",

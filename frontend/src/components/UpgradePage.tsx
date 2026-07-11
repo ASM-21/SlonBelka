@@ -52,8 +52,13 @@ export default function UpgradePage({
       const { url } = await checkout(plan);
       window.location.href = url; // off to Stripe Checkout
     } catch (e) {
-      // 503 when Stripe keys aren't configured yet.
-      setNote("Checkout isn't available yet. Billing needs to be configured.");
+      // 403 when email verification is required; 503 when Stripe keys
+      // aren't configured yet.
+      setNote(
+        String(e).includes("403")
+          ? "Подтвердите почту, чтобы оформить Премиум · Verify your email first (see the note on the home screen), then try again."
+          : "Checkout isn't available yet. Billing needs to be configured.",
+      );
       setBusy(false);
     }
   };

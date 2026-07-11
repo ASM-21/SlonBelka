@@ -55,6 +55,23 @@ def test_email_send_failure_does_not_raise(monkeypatch):
     email.send_password_reset_email("u@e.com", "tok")  # must not raise
 
 
+def test_checkout_requires_verified_email_when_flag_on(client, auth, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "require_email_verification", True)
+    r = client.post("/billing/checkout", headers=auth, json={"plan": "monthly"})
+    assert r.status_code == 403
+
+    # Verify via the token from the outbox, then the gate opens (503 next,
+    # because Stripe is not configured in tests, which proves we got past it).
+    from app.services.email import get_outbox
+
+    token = [m for m in get_outbox() if "Verify" in m["subject"]][-1]["token"]
+    assert client.post("/auth/verify-email", json={"token": token}).status_code == 200
+    r = client.post("/billing/checkout", headers=auth, json={"plan": "monthly"})
+    assert r.status_code == 503
+
+
 def test_outbox_links_use_root_query_params(client):
     from app.services.email import get_outbox
 

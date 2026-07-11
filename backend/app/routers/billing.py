@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db import get_db
 from app.models import User
 from app.routers.auth import current_user
@@ -24,6 +25,10 @@ def checkout(
 ) -> dict:
     if body.plan not in _PLANS:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Unknown plan")
+    # E2: with the flag on, buying premium requires a verified email. Existing
+    # subscribers keep what they paid for; only new checkouts are gated.
+    if settings.require_email_verification and not user.email_verified:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Email verification required")
     try:
         return {"url": billing.create_checkout(db, user, body.plan)}
     except billing.BillingNotConfigured as exc:

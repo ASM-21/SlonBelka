@@ -1,4 +1,5 @@
-import { getDashboard, logout as apiLogout } from "../lib/api";
+import { useState } from "react";
+import { getDashboard, getMe, logout as apiLogout, resendVerification } from "../lib/api";
 import { BAND_LABELS, LEECH_LABEL, LEECH_LABEL_RU } from "../lib/labels";
 import { useFetch } from "../lib/useFetch";
 
@@ -26,6 +27,8 @@ export default function Home({
   onLogout: () => void;
 }) {
   const { status, data: d, retry } = useFetch(getDashboard);
+  const meFetch = useFetch(getMe);
+  const [verifySent, setVerifySent] = useState(false);
 
   const logout = async () => {
     await apiLogout();
@@ -60,6 +63,29 @@ export default function Home({
           <button onClick={retry} className="font-semibold underline">
             Retry
           </button>
+        </div>
+      )}
+
+      {meFetch.data && !meFetch.data.email_verified && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-sb-gold-soft px-3 py-2 text-sm text-[#7A5F1E]">
+          <span>Подтвердите почту · Please verify your email.</span>
+          {verifySent ? (
+            <span className="shrink-0 font-semibold">Sent, check your inbox.</span>
+          ) : (
+            <button
+              onClick={async () => {
+                try {
+                  await resendVerification();
+                  setVerifySent(true);
+                } catch {
+                  /* the button stays for another try */
+                }
+              }}
+              className="shrink-0 font-semibold underline"
+            >
+              выслать снова · resend
+            </button>
+          )}
         </div>
       )}
 
