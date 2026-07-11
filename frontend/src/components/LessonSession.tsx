@@ -357,7 +357,9 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
           <button
             autoFocus
             onClick={next}
-            className="mt-5 w-full rounded-xl bg-sb-ink py-3 font-bold text-white"
+            className={`mt-5 w-full rounded-xl py-3 font-bold text-white ${
+              feedback.correct ? "bg-[#2E6B45]" : "bg-[#A83B33]"
+            }`}
           >
             Дальше · Continue
           </button>

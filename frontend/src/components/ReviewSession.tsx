@@ -383,7 +383,9 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
             <button
               autoFocus
               onClick={cont}
-              className="mt-6 w-full rounded-xl bg-sb-ink py-3 font-bold text-white"
+              className={`mt-6 w-full rounded-xl py-3 font-bold text-white ${
+                result?.correct ? "bg-[#2E6B45]" : "bg-[#A83B33]"
+              }`}
             >
               Дальше · Continue
             </button>
