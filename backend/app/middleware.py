@@ -1,12 +1,16 @@
-"""Request-guarding ASGI middleware."""
+"""Request-guarding and observability ASGI middleware."""
 
 from __future__ import annotations
 
 import json
+import logging
+import time
 
 from starlette.exceptions import HTTPException
 
 from app.config import settings
+
+logger = logging.getLogger("slonbelka.request")
 
 
 class BodySizeLimitMiddleware:
@@ -52,6 +56,42 @@ class BodySizeLimitMiddleware:
             return message
 
         await self.app(scope, limited_receive, send)
+
+
+class RequestLogMiddleware:
+    """One structured log line per request: method, path, status, duration,
+    client IP. Key=value format so a log platform can parse without config.
+    /health is skipped to keep liveness probes out of the logs."""
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http" or scope.get("path") == "/health":
+            await self.app(scope, receive, send)
+            return
+
+        start = time.perf_counter()
+        seen: dict = {}
+
+        async def logging_send(message) -> None:
+            if message["type"] == "http.response.start":
+                seen["status"] = message["status"]
+            await send(message)
+
+        try:
+            await self.app(scope, receive, logging_send)
+        finally:
+            duration_ms = (time.perf_counter() - start) * 1000
+            client = scope.get("client")
+            logger.info(
+                "method=%s path=%s status=%s duration_ms=%.1f client=%s",
+                scope.get("method"),
+                scope.get("path"),
+                seen.get("status", "unfinished"),
+                duration_ms,
+                client[0] if client else "-",
+            )
 
 
 async def _send_too_large(send) -> None:

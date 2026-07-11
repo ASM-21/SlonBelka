@@ -15,7 +15,12 @@ from app.services.ratelimit import rate_limit
 router = APIRouter(prefix="/account", tags=["account"])
 
 
-@router.get("/export")
+@router.get(
+    "/export",
+    # The export walks every user-owned table; keep it from becoming a
+    # cheap way to hammer the database.
+    dependencies=[Depends(rate_limit("account_export", limit=10, window_seconds=900))],
+)
 def export_data(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),

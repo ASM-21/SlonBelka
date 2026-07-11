@@ -7,6 +7,7 @@ fully tested; lesson/review/sync endpoints come in later phases (see docs/PHASE0
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
 import sentry_sdk
@@ -15,7 +16,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db import Base, engine
-from app.middleware import BodySizeLimitMiddleware
+from app.middleware import BodySizeLimitMiddleware, RequestLogMiddleware
+
+# Make app loggers (request lines, integration warnings) visible under
+# uvicorn, whose own loggers carry their own handlers and are unaffected.
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 from app.routers import account, auth, billing, dashboard, internal, items, lessons, push, reviews, settings as settings_router, stats, study
 
 # Import models so they register on Base before create_all.
@@ -42,9 +47,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Slonbelka API", version="0.1.0", lifespan=lifespan)
 
-# CORS is registered after the body limit so it runs outermost and 413
-# responses still carry CORS headers (Starlette treats the last-added
-# middleware as the outermost layer).
+# Middleware order (last added runs outermost): the request log wraps
+# everything so every response is timed, CORS next so even 413s carry CORS
+# headers, the body limit innermost.
 app.add_middleware(BodySizeLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -53,6 +58,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RequestLogMiddleware)
 
 app.include_router(auth.router)
 app.include_router(lessons.router)

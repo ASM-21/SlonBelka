@@ -55,6 +55,23 @@ def test_email_send_failure_does_not_raise(monkeypatch):
     email.send_password_reset_email("u@e.com", "tok")  # must not raise
 
 
+def test_request_log_line_emitted(client, caplog):
+    import logging
+
+    with caplog.at_level(logging.INFO, logger="slonbelka.request"):
+        client.get("/dashboard")  # 401 without auth, still logged
+    lines = [r.getMessage() for r in caplog.records if r.name == "slonbelka.request"]
+    assert any("path=/dashboard" in line and "status=401" in line for line in lines)
+
+
+def test_health_is_not_request_logged(client, caplog):
+    import logging
+
+    with caplog.at_level(logging.INFO, logger="slonbelka.request"):
+        client.get("/health")
+    assert not [r for r in caplog.records if r.name == "slonbelka.request"]
+
+
 def test_checkout_requires_verified_email_when_flag_on(client, auth, monkeypatch):
     from app.config import settings
 

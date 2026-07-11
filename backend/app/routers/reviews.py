@@ -18,6 +18,7 @@ from app.schemas import (
 )
 from app.services import learning
 from app.services.dashboard import build_forecast
+from app.services.ratelimit import rate_limit
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
@@ -65,7 +66,13 @@ def submit(
     return result
 
 
-@router.post("/sync", response_model=SyncResponse)
+@router.post(
+    "/sync",
+    response_model=SyncResponse,
+    # Each call can carry a whole offline session; 30/min per IP is far above
+    # anything the sync client does and still stops abuse.
+    dependencies=[Depends(rate_limit("reviews_sync", limit=30, window_seconds=60))],
+)
 def sync(
     body: SyncRequest,
     user: User = Depends(current_user),
