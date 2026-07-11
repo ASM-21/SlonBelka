@@ -2,6 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import SessionSummary from "./SessionSummary";
 import { completeLessons, getLessons, getSettings, LessonItem, updateSettings } from "../lib/api";
 import { gradeMeaning, gradeProduction } from "../lib/grading";
+import {
+  cacheLessons,
+  cachedLessons,
+  clearCachedLessons,
+  enqueueLessonCompletion,
+} from "../lib/offlineQueue";
 import { shuffle, spreadPairs } from "../lib/shuffle";
 import { useFetch } from "../lib/useFetch";
 import { Layout } from "./CyrillicKeyboard";
@@ -40,7 +46,7 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
   const [input, setInput] = useState("");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [nearMiss, setNearMiss] = useState(false);
-  const [summary, setSummary] = useState<{ started: number } | null>(null);
+  const [summary, setSummary] = useState<{ started: number; offline?: boolean } | null>(null);
   const quizStats = useRef({ first: new Map<string, boolean>() });
 
   // On-screen keyboard layout: saved setting, overridable in-session.
@@ -57,7 +63,17 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
   };
 
   useEffect(() => {
-    getLessons().then(setItems).catch(() => setItems([]));
+    // Cache each successful fetch so the lesson still works offline; fall
+    // back to the cached list when the network is unavailable.
+    getLessons()
+      .then((ls) => {
+        setItems(ls);
+        cacheLessons(ls);
+      })
+      .catch(async () => {
+        const cached = await cachedLessons<LessonItem>();
+        setItems(cached ?? []);
+      });
   }, []);
 
   const remainingItems = useMemo(
@@ -80,12 +96,17 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
   const commit = async () => {
     if (!items) return;
     setPhase("committing");
+    const ids = items.map((i) => i.id);
     try {
-      const res = await completeLessons(items.map((i) => i.id));
+      const res = await completeLessons(ids);
       setSummary({ started: res.started.length });
     } catch {
-      setSummary({ started: 0 });
+      // Offline: queue the completion for sync and report the lesson as done.
+      await enqueueLessonCompletion(ids);
+      setSummary({ started: ids.length, offline: true });
     }
+    // Either way these words are used up; a stale cache would re-offer them.
+    clearCachedLessons();
     setPhase("done");
   };
 
@@ -247,6 +268,11 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
           { label: "Words learned", value: String(summary?.started ?? items.length) },
           { label: "Quiz accuracy", value: acc != null ? `${acc}%` : "—" },
         ]}
+        note={
+          summary?.offline
+            ? "Saved offline. The words will be committed when you're back online."
+            : undefined
+        }
         onDone={onDone}
       />
     );
