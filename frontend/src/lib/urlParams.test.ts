@@ -28,4 +28,10 @@ describe("parseAppParams", () => {
     expect(p.billing).toBe("success");
     expect(p.verifyToken).toBe("v1");
   });
+
+  it("parses goto and rejects unknown views", () => {
+    expect(parseAppParams("?goto=reviews").goto).toBe("reviews");
+    expect(parseAppParams("?goto=lessons").goto).toBe("lessons");
+    expect(parseAppParams("?goto=settings").goto).toBeUndefined();
+  });
 });

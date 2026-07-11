@@ -112,6 +112,7 @@ def send_review_reminders(db: Session) -> dict:
         payload = {
             "title": "Slonbelka",
             "body": f"You have {n} review{'s' if n != 1 else ''} due",
+            "count": n,  # mirrored onto the app icon badge by the service worker
         }
         if send_to_user(db, user_id, payload) > 0:
             updated = dict(user_settings)

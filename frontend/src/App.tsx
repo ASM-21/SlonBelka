@@ -32,7 +32,9 @@ function readEntryParams(): AppParams {
 export default function App() {
   const [entry] = useState<AppParams>(readEntryParams);
   const [authed, setAuthed] = useState<boolean>(() => !!token.get());
-  const [view, setView] = useState<View>(entry.billing ? "upgrade" : "home");
+  const [view, setView] = useState<View>(
+    entry.billing ? "upgrade" : entry.goto ?? "home",
+  );
   const [billingResult, setBillingResult] = useState<"success" | "cancel" | null>(entry.billing ?? null);
   const [verifyState, setVerifyState] = useState<"pending" | "ok" | "failed" | null>(
     entry.verifyToken ? "pending" : null,
@@ -46,6 +48,19 @@ export default function App() {
     const onExpired = () => setAuthed(false);
     window.addEventListener("slonbelka:auth-expired", onExpired);
     return () => window.removeEventListener("slonbelka:auth-expired", onExpired);
+  }, []);
+
+  // The service worker posts this when a reminder notification is clicked
+  // while a tab is already open (a fresh tab gets ?goto=reviews instead).
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === "goto" && (e.data.view === "reviews" || e.data.view === "lessons")) {
+        setView(e.data.view);
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
   }, []);
 
   // First-run walkthrough: shown once per account, skipped for entry flows

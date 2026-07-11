@@ -7,6 +7,7 @@ export interface AppParams {
   billing?: "success" | "cancel";
   verifyToken?: string;
   resetToken?: string;
+  goto?: "reviews" | "lessons";
 }
 
 export function parseAppParams(search: string): AppParams {
@@ -18,5 +19,7 @@ export function parseAppParams(search: string): AppParams {
   if (verify) out.verifyToken = verify;
   const reset = params.get("reset");
   if (reset) out.resetToken = reset;
+  const goto = params.get("goto");
+  if (goto === "reviews" || goto === "lessons") out.goto = goto;
   return out;
 }

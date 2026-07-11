@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getDashboard, getMe, logout as apiLogout, resendVerification } from "../lib/api";
 import { BAND_LABELS, LEECH_LABEL, LEECH_LABEL_RU } from "../lib/labels";
 import { useFetch } from "../lib/useFetch";
@@ -34,6 +34,17 @@ export default function Home({
     await apiLogout();
     onLogout();
   };
+
+  // Mirror the due-review count onto the installed app's icon badge.
+  useEffect(() => {
+    if (!d) return;
+    const nav = navigator as Navigator & {
+      setAppBadge?: (n?: number) => Promise<void>;
+      clearAppBadge?: () => Promise<void>;
+    };
+    if (d.reviews_due > 0) nav.setAppBadge?.(d.reviews_due).catch(() => {});
+    else nav.clearAppBadge?.().catch(() => {});
+  }, [d]);
 
   const lp = d?.level_progress;
   const progressPct = lp && lp.threshold > 0 ? Math.min(100, (lp.fraction / lp.threshold) * 100) : 0;
