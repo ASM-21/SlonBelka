@@ -134,3 +134,39 @@ def build_dashboard(db: Session, user: User, now: datetime | None = None) -> dic
         "total_reviews": total_reviews,
         "leech_count": leech_count,
     }
+
+
+def build_forecast(db: Session, user: User, now: datetime | None = None) -> dict:
+    """Upcoming review load. Buckets are rolling windows from now (hour 0 is
+    the next 60 minutes, day 0 is the next 24 hours), which keeps the math
+    timezone-free; the client labels them relatively (+1h, +2d)."""
+    now = now or _utcnow()
+    frozen = bool((user.settings or {}).get("vacation_started_at"))
+
+    due_now = 0
+    hourly = [0] * 24
+    daily = [0] * 7
+    if not frozen:
+        rows = db.execute(
+            select(UserItemState.available_at).where(
+                and_(
+                    UserItemState.user_id == user.id,
+                    UserItemState.available_at.is_not(None),
+                    UserItemState.srs_stage < engine.BURNED,
+                )
+            )
+        ).all()
+        for (t,) in rows:
+            if t is None:
+                continue
+            t = _aware(t)
+            if t <= now:
+                due_now += 1
+                continue
+            hours = (t - now).total_seconds() / 3600
+            if hours < 24:
+                hourly[int(hours)] += 1
+            if hours < 24 * 7:
+                daily[int(hours // 24)] += 1
+
+    return {"due_now": due_now, "frozen": frozen, "hourly": hourly, "daily": daily}

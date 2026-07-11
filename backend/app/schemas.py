@@ -111,6 +111,13 @@ class SubmitReviewResponse(BaseModel):
     current_level: int | None = None
 
 
+class ForecastResponse(BaseModel):
+    due_now: int
+    frozen: bool = False
+    hourly: list[int]  # 24 rolling one-hour buckets from now
+    daily: list[int]   # 7 rolling one-day buckets from now
+
+
 class LevelProgress(BaseModel):
     level: int
     guru: int

@@ -8,8 +8,16 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import User
 from app.routers.auth import current_user
-from app.schemas import ReviewItem, SubmitReviewRequest, SubmitReviewResponse, SyncRequest, SyncResponse
+from app.schemas import (
+    ForecastResponse,
+    ReviewItem,
+    SubmitReviewRequest,
+    SubmitReviewResponse,
+    SyncRequest,
+    SyncResponse,
+)
 from app.services import learning
+from app.services.dashboard import build_forecast
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
@@ -26,6 +34,13 @@ def list_reviews(
     user: User = Depends(current_user), db: Session = Depends(get_db)
 ) -> list:
     return learning.get_reviews(db, user)
+
+
+@router.get("/forecast", response_model=ForecastResponse)
+def forecast(
+    user: User = Depends(current_user), db: Session = Depends(get_db)
+) -> dict:
+    return build_forecast(db, user)
 
 
 @router.post("", response_model=SubmitReviewResponse)

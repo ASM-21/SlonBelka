@@ -261,6 +261,15 @@ export const completeLessons = (item_ids: number[]) =>
 
 export const getReviews = () => api<ReviewItem[]>("/reviews");
 
+export interface Forecast {
+  due_now: number;
+  frozen: boolean;
+  hourly: number[]; // 24 rolling one-hour buckets from now
+  daily: number[]; // 7 rolling one-day buckets from now
+}
+
+export const getForecast = () => api<Forecast>("/reviews/forecast");
+
 export const submitReview = (body: {
   item_id: number;
   question_type: string;
