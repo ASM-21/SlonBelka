@@ -184,6 +184,7 @@ export interface Settings {
   daily_lesson_cap: number;
   autoplay_audio: boolean;
   keyboard_layout: string;
+  onboarded: boolean;
   frozen: boolean;
 }
 

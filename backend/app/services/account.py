@@ -36,6 +36,7 @@ DEFAULT_SETTINGS = {
     "daily_lesson_cap": 15,
     "autoplay_audio": True,
     "keyboard_layout": "jcuken",  # jcuken | phonetic
+    "onboarded": False,  # set true once the first-run walkthrough is done
 }
 ALLOWED_KEYS = set(DEFAULT_SETTINGS)
 VACATION_KEY = "vacation_started_at"

@@ -70,6 +70,13 @@ def test_settings_defaults_and_patch(client, auth):
     assert len(client.get("/lessons", headers=auth).json()) == 5
 
 
+def test_onboarded_flag_round_trips(client, auth):
+    assert client.get("/settings", headers=auth).json()["onboarded"] is False
+    r = client.patch("/settings", json={"onboarded": True}, headers=auth)
+    assert r.json()["onboarded"] is True
+    assert client.get("/settings", headers=auth).json()["onboarded"] is True
+
+
 # --------------------------------------------------------------------------- #
 # Vacation
 # --------------------------------------------------------------------------- #

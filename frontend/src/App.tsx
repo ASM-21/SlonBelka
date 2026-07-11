@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { token, verifyEmail } from "./lib/api";
+import { getSettings, token, verifyEmail } from "./lib/api";
 import { AppParams, parseAppParams } from "./lib/urlParams";
 import AuthScreen from "./components/AuthScreen";
+import Onboarding from "./components/Onboarding";
 import Home from "./components/Home";
 import LessonSession from "./components/LessonSession";
 import ReviewSession from "./components/ReviewSession";
@@ -37,6 +38,8 @@ export default function App() {
     entry.verifyToken ? "pending" : null,
   );
   const [legalDoc, setLegalDoc] = useState<LegalDoc | null>(null);
+  // null while unknown; the app renders normally until we know the flag.
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
 
   // The API layer fires this when a refresh fails (session fully expired).
   useEffect(() => {
@@ -44,6 +47,15 @@ export default function App() {
     window.addEventListener("slonbelka:auth-expired", onExpired);
     return () => window.removeEventListener("slonbelka:auth-expired", onExpired);
   }, []);
+
+  // First-run walkthrough: shown once per account, skipped for entry flows
+  // that carry their own context (a Stripe return or a reset link).
+  useEffect(() => {
+    if (!authed) return;
+    getSettings()
+      .then((s) => setOnboarded(s.onboarded))
+      .catch(() => setOnboarded(true)); // fail open, never block the app
+  }, [authed]);
 
   // Email verification links work logged in or out (the endpoint is public).
   useEffect(() => {
@@ -91,6 +103,19 @@ export default function App() {
     );
 
   const home = () => setView("home");
+
+  if (onboarded === false && !entry.billing && !entry.resetToken)
+    return (
+      <main className="min-h-screen bg-sb-bg text-sb-ink">
+        {verifyBanner}
+        <Onboarding
+          onFinish={(startLessons) => {
+            setOnboarded(true);
+            setView(startLessons ? "lessons" : "home");
+          }}
+        />
+      </main>
+    );
 
   return (
     <main className="min-h-screen bg-sb-bg text-sb-ink">

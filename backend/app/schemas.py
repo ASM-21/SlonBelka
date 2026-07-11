@@ -226,6 +226,7 @@ class SettingsResponse(BaseModel):
     daily_lesson_cap: int
     autoplay_audio: bool
     keyboard_layout: str
+    onboarded: bool = False
     frozen: bool = False
 
 
@@ -233,6 +234,7 @@ class SettingsPatch(BaseModel):
     daily_lesson_cap: int | None = None
     autoplay_audio: bool | None = None
     keyboard_layout: str | None = None
+    onboarded: bool | None = None
 
 
 class VacationRequest(BaseModel):
