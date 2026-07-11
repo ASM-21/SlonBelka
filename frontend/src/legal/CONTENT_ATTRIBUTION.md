@@ -23,7 +23,20 @@ Slonbelka's vocabulary, definitions, example sentences, and audio draw on open-c
 - **License**: CC BY 2.0 FR (sentences are individually licensed by their contributors; check per-sentence if reusing at scale).
 - **What we use**: example sentences.
 - **Requirement**: attribution to Tatoeba and the original sentence contributor.
-- **In-app attribution**: a line such as "Example sentences from Tatoeba.org, CC BY 2.0 FR" near example sentences or in a general credits page.
+- **In-app attribution**: a line such as "Example sentences from Tatoeba.org, CC BY 2.0 FR" near example sentences or in a general credits page. The app shows this line under the Examples section of the word detail panel, and the sentence artifact produced by `pipeline/sentences.py` records source and license on every sentence row.
+
+## FrequencyWords (hermitdave / OpenSubtitles)
+
+- **License**: CC BY-SA 4.0 for the frequency lists; the underlying corpus is OpenSubtitles.
+- **What we use**: word frequency ordering (which words to teach first). The word list itself, not any subtitle text.
+- **Requirement**: attribution to the FrequencyWords project and OpenSubtitles.
+- **In-app attribution**: covered by a line on this credits page; no per-word attribution needed since only ranking data is used.
+
+## Azure TTS (generated audio)
+
+- **License**: generated output, no third-party attribution required.
+- **What we use**: fallback pronunciation where no native recording exists, and (later) example-sentence audio.
+- **Requirement**: none externally, but the app labels TTS audio as generated so learners know it is not a native speaker. The `audio_assets` table records `source = "tts"` for these files and the word detail panel shows "Generated pronunciation (TTS)".
 
 ## Practical recommendations
 
@@ -31,6 +44,16 @@ Slonbelka's vocabulary, definitions, example sentences, and audio draw on open-c
 2. **Add a Credits/Licenses screen** in the app (e.g., Settings → About → Licenses) that lists all three sources with links, so attribution is discoverable even if per-word inline attribution is impractical for a good UX.
 3. **Share-alike applies to Wiktionary-derived content specifically.** If you only store facts (a word's gender, part of speech) rather than reproducing Wiktionary's actual prose, share-alike obligations are lighter, but attribution is still expected as a norm in the open-content community.
 4. **Re-verify before scaling content import.** These are general summaries of common license terms; verify the actual license tag on each source file/entry you import, since terms can differ from the source's overall reputation.
+
+## Pre-launch review checklist (owner)
+
+Work through this before opening the app to a wider audience:
+
+1. For each Commons audio file in the deck, confirm the license tag and uploader on its file page, and load `license` and `attribution` into the `audio_assets` table (the app surfaces both on the word detail panel automatically once present).
+2. Spot-check that every TTS file is recorded with `source = "tts"` so it is labeled as generated, not native.
+3. Confirm the Wiktionary-derived fields actually displayed (glosses, grammar data) stay within the facts-not-prose boundary described below, or carry share-alike terms if not.
+4. Keep this page reachable from Settings (it already is, via Content licenses and attribution) and re-export the bundled copy in `frontend/src/legal/` whenever this source file changes.
+5. Have a lawyer confirm the share-alike scope before any paid launch at scale.
 
 ## Disclaimer
 

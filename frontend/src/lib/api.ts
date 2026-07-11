@@ -153,6 +153,11 @@ export interface ItemDetail extends ItemSummary {
   aspect?: string | null;
   ipa?: string | null;
   audio_url?: string | null;
+  audio_attribution?: {
+    source?: string | null;
+    license?: string | null;
+    attribution?: string | null;
+  } | null;
   notes?: string | null;
   sentences: { ru: string; en: string; audio_url?: string | null }[];
   mnemonic?: { meaning?: string | null; reading?: string | null } | null;

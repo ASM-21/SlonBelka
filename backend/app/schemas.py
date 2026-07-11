@@ -308,6 +308,12 @@ class ItemStateOut(BaseModel):
     burned_at: datetime | None = None
 
 
+class AudioAttribution(BaseModel):
+    source: str | None = None  # wiktionary | tts
+    license: str | None = None
+    attribution: str | None = None
+
+
 class ItemDetail(ItemSummary):
     translations: list[str] = []
     synonyms: list[str] = []
@@ -315,6 +321,7 @@ class ItemDetail(ItemSummary):
     aspect: str | None = None
     ipa: str | None = None
     audio_url: str | None = None
+    audio_attribution: AudioAttribution | None = None
     notes: str | None = None
     sentences: list[SentenceOut] = []
     mnemonic: MnemonicOut | None = None
