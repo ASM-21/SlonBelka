@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getDashboard, getMe, logout as apiLogout, resendVerification } from "../lib/api";
+import { billingPortal, getBillingStatus, getDashboard, getMe, logout as apiLogout, resendVerification } from "../lib/api";
 import { BAND_LABELS, LEECH_LABEL, LEECH_LABEL_RU } from "../lib/labels";
 import { useFetch } from "../lib/useFetch";
 
@@ -28,6 +28,7 @@ export default function Home({
 }) {
   const { status, data: d, retry } = useFetch(getDashboard);
   const meFetch = useFetch(getMe);
+  const billingFetch = useFetch(getBillingStatus);
   const [verifySent, setVerifySent] = useState(false);
 
   const logout = async () => {
@@ -73,6 +74,26 @@ export default function Home({
           <span>Couldn't load your dashboard.</span>
           <button onClick={retry} className="font-semibold underline">
             Retry
+          </button>
+        </div>
+      )}
+
+      {billingFetch.data?.status === "past_due" && (
+        <div className="mb-4 rounded-xl border border-red-300 bg-red-50 px-3 py-2.5 text-sm text-red-800">
+          <div className="font-semibold">Оплата не прошла · Your last payment failed</div>
+          <div className="mt-0.5">Update your payment method to keep Premium.</div>
+          <button
+            onClick={async () => {
+              try {
+                const { url } = await billingPortal();
+                window.location.href = url;
+              } catch {
+                /* portal unavailable; nothing to do */
+              }
+            }}
+            className="mt-2 rounded-lg bg-red-700 px-3 py-1.5 text-sm font-bold text-white"
+          >
+            Update payment
           </button>
         </div>
       )}
