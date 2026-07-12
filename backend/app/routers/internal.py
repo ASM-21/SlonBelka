@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_db
+from app.services import email as email_service
 from app.services import push as push_service
 
 router = APIRouter(prefix="/internal", tags=["internal"])
@@ -26,3 +27,8 @@ def _require_internal_token(x_internal_token: str | None = Header(default=None))
 @router.post("/push/run", dependencies=[Depends(_require_internal_token)])
 def run_push_reminders(db: Session = Depends(get_db)) -> dict:
     return push_service.send_review_reminders(db)
+
+
+@router.post("/email/digest", dependencies=[Depends(_require_internal_token)])
+def run_weekly_digest(db: Session = Depends(get_db)) -> dict:
+    return email_service.send_weekly_digests(db)
