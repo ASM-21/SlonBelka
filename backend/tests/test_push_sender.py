@@ -71,6 +71,46 @@ def test_reminder_sends_again_after_cooldown(client, vapid, monkeypatch):
     assert len(calls) == 2
 
 
+def test_reminders_disabled_user_is_skipped(client, vapid, monkeypatch):
+    headers = _setup_due_user(client)
+    client.patch("/settings", headers=headers, json={"reminders_enabled": False})
+    calls = []
+    monkeypatch.setattr(push_service, "webpush", lambda **kw: calls.append(kw))
+
+    with SessionLocal() as db:
+        result = push_service.send_review_reminders(db)
+    assert result["sent"] == 0
+    assert result["skipped"] == 1
+    assert calls == []
+
+
+def test_quiet_hours_window():
+    from datetime import datetime, timezone
+
+    from app.models import User
+
+    def user_at(tz, enabled, start, end):
+        u = User()
+        u.timezone = tz
+        u.settings = {
+            "quiet_hours_enabled": enabled,
+            "quiet_hours_start": start,
+            "quiet_hours_end": end,
+        }
+        return u
+
+    # 22:00 UTC. A wrap-around window 22->7 is quiet; a daytime window is not.
+    now = datetime(2026, 7, 12, 22, 0, tzinfo=timezone.utc)
+    assert push_service._in_quiet_hours(user_at("UTC", True, 22, 7), now) is True
+    assert push_service._in_quiet_hours(user_at("UTC", True, 9, 17), now) is False
+    # Disabled means never quiet.
+    assert push_service._in_quiet_hours(user_at("UTC", False, 22, 7), now) is False
+    # Timezone matters: 22:00 UTC is 18:00 in New York (EDT), outside 22->7.
+    assert push_service._in_quiet_hours(user_at("America/New_York", True, 22, 7), now) is False
+    # A bad timezone string falls back to UTC rather than raising.
+    assert push_service._in_quiet_hours(user_at("Not/AZone", True, 22, 7), now) is True
+
+
 def test_frozen_user_is_skipped(client, vapid, monkeypatch):
     headers = _setup_due_user(client)
     client.post("/settings/vacation", headers=headers, json={"on": True})

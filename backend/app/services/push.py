@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pywebpush import WebPushException, webpush
 from sqlalchemy import and_, func, select
@@ -32,6 +33,25 @@ logger = logging.getLogger(__name__)
 
 REMINDER_KEY = "last_reminder_sent_at"
 REMINDER_COOLDOWN = timedelta(hours=6)
+
+
+def _in_quiet_hours(user: User, now: datetime) -> bool:
+    """Whether now falls inside the user's nightly quiet window, evaluated in
+    their own timezone. The window may wrap midnight (start > end)."""
+    s = user.settings or {}
+    if not s.get("quiet_hours_enabled", False):
+        return False
+    start = s.get("quiet_hours_start", 22)
+    end = s.get("quiet_hours_end", 7)
+    try:
+        tz = ZoneInfo(user.timezone or "UTC")
+    except (ZoneInfoNotFoundError, ValueError):
+        tz = ZoneInfo("UTC")
+    hour = now.astimezone(tz).hour
+    if start <= end:
+        return start <= hour < end
+    # Wraps midnight, e.g. 22:00 to 07:00.
+    return hour >= start or hour < end
 
 
 def configured() -> bool:
@@ -99,6 +119,12 @@ def send_review_reminders(db: Session) -> dict:
             continue
         user_settings = user.settings or {}
         if user_settings.get(VACATION_KEY):
+            skipped += 1
+            continue
+        if not user_settings.get("reminders_enabled", True):
+            skipped += 1
+            continue
+        if _in_quiet_hours(user, now):
             skipped += 1
             continue
         last_raw = user_settings.get(REMINDER_KEY)

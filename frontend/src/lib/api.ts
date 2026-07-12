@@ -190,6 +190,10 @@ export interface Settings {
   autoplay_audio: boolean;
   keyboard_layout: string;
   onboarded: boolean;
+  reminders_enabled: boolean;
+  quiet_hours_enabled: boolean;
+  quiet_hours_start: number;
+  quiet_hours_end: number;
   frozen: boolean;
 }
 

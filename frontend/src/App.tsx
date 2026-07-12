@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getSettings, token, verifyEmail } from "./lib/api";
+import { getSettings, token, updateSettings, verifyEmail } from "./lib/api";
 import { AppParams, parseAppParams } from "./lib/urlParams";
 import AuthScreen from "./components/AuthScreen";
 import Onboarding from "./components/Onboarding";
@@ -160,6 +160,13 @@ export default function App() {
           onAccountDeleted={() => {
             setView("home");
             setAuthed(false);
+          }}
+          onReplayOnboarding={() => {
+            updateSettings({ onboarded: false }).catch(() => {
+              /* the tour still shows this session */
+            });
+            setOnboarded(false);
+            setView("home");
           }}
         />
       )}

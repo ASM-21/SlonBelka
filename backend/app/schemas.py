@@ -227,6 +227,10 @@ class SettingsResponse(BaseModel):
     autoplay_audio: bool
     keyboard_layout: str
     onboarded: bool = False
+    reminders_enabled: bool = True
+    quiet_hours_enabled: bool = False
+    quiet_hours_start: int = 22
+    quiet_hours_end: int = 7
     frozen: bool = False
 
 
@@ -235,6 +239,10 @@ class SettingsPatch(BaseModel):
     autoplay_audio: bool | None = None
     keyboard_layout: str | None = None
     onboarded: bool | None = None
+    reminders_enabled: bool | None = None
+    quiet_hours_enabled: bool | None = None
+    quiet_hours_start: int | None = Field(default=None, ge=0, le=23)
+    quiet_hours_end: int | None = Field(default=None, ge=0, le=23)
 
 
 class VacationRequest(BaseModel):

@@ -9,10 +9,12 @@ export default function SettingsPage({
   onDone,
   onShowLegal,
   onAccountDeleted,
+  onReplayOnboarding,
 }: {
   onDone: () => void;
   onShowLegal: (doc: LegalDoc) => void;
   onAccountDeleted: () => void;
+  onReplayOnboarding: () => void;
 }) {
   const { status, data: s, setData: setS, retry } = useFetch(getSettings);
   const [saving, setSaving] = useState(false);
@@ -153,6 +155,59 @@ export default function SettingsPage({
           </p>
         )}
         {reminderMsg && <p className="mt-2 text-sm text-sb-muted">{reminderMsg}</p>}
+
+        <div className="mt-4 flex items-center justify-between border-t border-sb-line pt-4">
+          <div className="pr-4">
+            <div className="text-sm font-semibold text-sb-ink">Send me reminders</div>
+            <div className="text-sm text-sb-muted">Turn off to keep the app but stop the nudges</div>
+          </div>
+          <Toggle
+            on={s.reminders_enabled}
+            onClick={() => patch({ reminders_enabled: !s.reminders_enabled })}
+            disabled={saving}
+            label="Send me reminders"
+          />
+        </div>
+
+        {s.reminders_enabled && (
+          <div className="mt-3 border-t border-sb-line pt-3">
+            <div className="flex items-center justify-between">
+              <div className="pr-4">
+                <div className="text-sm font-semibold text-sb-ink">Quiet hours</div>
+                <div className="text-sm text-sb-muted">No reminders during these hours</div>
+              </div>
+              <Toggle
+                on={s.quiet_hours_enabled}
+                onClick={() => patch({ quiet_hours_enabled: !s.quiet_hours_enabled })}
+                disabled={saving}
+                label="Quiet hours"
+              />
+            </div>
+            {s.quiet_hours_enabled && (
+              <div className="mt-3 flex items-center gap-3 text-sm">
+                <label className="flex items-center gap-2">
+                  <span className="text-sb-muted">From</span>
+                  <HourSelect
+                    value={s.quiet_hours_start}
+                    onChange={(v) => patch({ quiet_hours_start: v })}
+                    disabled={saving}
+                    label="Quiet hours start"
+                  />
+                </label>
+                <label className="flex items-center gap-2">
+                  <span className="text-sb-muted">to</span>
+                  <HourSelect
+                    value={s.quiet_hours_end}
+                    onChange={(v) => patch({ quiet_hours_end: v })}
+                    disabled={saving}
+                    label="Quiet hours end"
+                  />
+                </label>
+                <span className="text-xs text-sb-muted">your local time</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mt-4 rounded-2xl border border-sb-line bg-sb-card p-4">
@@ -175,6 +230,12 @@ export default function SettingsPage({
             className="text-sb-muted underline hover:text-sb-ink"
           >
             Content licenses and attribution
+          </button>
+          <button
+            onClick={onReplayOnboarding}
+            className="text-sb-muted underline hover:text-sb-ink"
+          >
+            Show the welcome tour again
           </button>
         </div>
       </div>
@@ -257,15 +318,57 @@ function Row({ label, hint, children }: { label: string; hint: string; children:
   );
 }
 
-function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {
+function Toggle({
+  on,
+  onClick,
+  disabled,
+  label,
+}: {
+  on: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  label?: string;
+}) {
   return (
     <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
       onClick={onClick}
       disabled={disabled}
       className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? "bg-sb-enl" : "bg-sb-line"} disabled:opacity-50`}
     >
       <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
     </button>
+  );
+}
+
+function HourSelect({
+  value,
+  onChange,
+  disabled,
+  label,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  disabled?: boolean;
+  label: string;
+}) {
+  return (
+    <select
+      aria-label={label}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      disabled={disabled}
+      className="rounded-lg border border-sb-line bg-sb-card px-2 py-1 text-sm text-sb-ink"
+    >
+      {Array.from({ length: 24 }, (_, h) => (
+        <option key={h} value={h}>
+          {String(h).padStart(2, "0")}:00
+        </option>
+      ))}
+    </select>
   );
 }
 
