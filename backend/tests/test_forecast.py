@@ -23,9 +23,12 @@ def test_forecast_buckets(client, auth):
     with SessionLocal() as db:
         states = db.query(UserItemState).filter(UserItemState.item_id.in_(ids)).all()
         assert len(states) == 3
-        states[0].available_at = now - timedelta(minutes=5)   # due now
-        states[1].available_at = now + timedelta(hours=3)     # hour bucket 3, day 0
-        states[2].available_at = now + timedelta(days=2, hours=1)  # day bucket 2
+        # Offsets sit mid-bucket, not on a boundary: the endpoint recomputes
+        # `now` a few ms later, which would floor an exactly-N-hour offset into
+        # the bucket below.
+        states[0].available_at = now - timedelta(minutes=5)          # due now
+        states[1].available_at = now + timedelta(hours=3, minutes=30)  # hour bucket 3, day 0
+        states[2].available_at = now + timedelta(days=2, hours=12)   # day bucket 2
         db.commit()
 
     f = client.get("/reviews/forecast", headers=auth).json()
