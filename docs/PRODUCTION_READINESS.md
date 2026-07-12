@@ -135,19 +135,24 @@ Acceptance: the app is reachable, migrations run on deploy, and audio serves fro
 Where: `GET /account/export` (portable JSON keyed by item `external_id`) and `POST /account/delete` (password re-entry, best-effort Stripe cancel, removes every dependent row and revokes all sessions), surfaced in Settings with a two-step confirm.
 Acceptance met: deletion removes all user data and cannot be triggered accidentally; export returns the user's data in a portable format.
 
-### E2. Enforce email verification for paid features
-Goal: turn on the verification gate that already exists.
-Where: `require_email_verification` in config.
-Acceptance: with the flag on, premium actions require a verified email; the demo flow can still run with it off.
+### E2. Enforce email verification for paid features — DONE (code)
+Where: `POST /billing/checkout` returns 403 for unverified users when `require_email_verification` is on; existing subscribers keep access. The home screen shows a verify nudge with a resend button.
+Remaining: set `REQUIRE_EMAIL_VERIFICATION=true` on the host when ready to enforce (off by default so the demo flow stays frictionless).
 
-### E3. Onboarding
-Goal: a first-run experience, especially introducing the on-screen Cyrillic keyboard.
-Why: typing Cyrillic is the first real cliff for new users.
-Acceptance: a new user reaches their first review understanding how to input answers.
+### E3. Onboarding — DONE
+Where: `frontend/src/components/Onboarding.tsx`, a three-slide first-run walkthrough (what the app is, how the SRS intervals work, a hands-on Cyrillic input try) shown once per account via a new `onboarded` settings flag. Entry flows with their own context (Stripe return, reset link) skip it.
+Acceptance met: a new user reaches their first lesson understanding how to input answers.
 
-### E4. Legal and licensing review
-Goal: confirm every content and audio source is used within its license, with attribution where required.
-Acceptance: a written record of each source and its license, and the attribution surfaced in-app where the license requires it.
+### E4. Legal and licensing review — DONE (code), audit pending
+Where: item detail surfaces per-file audio source/license/attribution from the `audio_assets` table (or a Generated (TTS) label); example sentences carry a Tatoeba CC BY line. `docs/legal/CONTENT_ATTRIBUTION.md` covers all sources and has an owner pre-launch review checklist.
+Remaining: the owner audit itself (confirm each Commons file's license tag and load attribution rows), plus a lawyer's share-alike confirmation before a paid launch.
+
+### Other launch polish landed this iteration
+- Review forecast (`GET /reviews/forecast`) with 24-hour and weekly charts on the stats page.
+- Offline lessons: lesson content is cached in IndexedDB and completions queue for sync, mirroring the offline reviews path.
+- Mobile PWA polish: real PNG icons, iOS apple-touch-icon and status-bar meta, reminder deep-link into reviews, app icon badge for due count.
+- Answer feedback: the continue button turns green or red per result in every session.
+- Infra: rate limits on sync and export, structured request logging, a Playwright browser smoke test in CI, plus CodeQL and Dependabot.
 
 ## Reference
 

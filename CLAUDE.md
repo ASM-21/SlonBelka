@@ -52,7 +52,7 @@ Pipeline:
 cd pipeline && python -m pytest -q
 ```
 
-CI (`.github/workflows/ci.yml`) runs all of the above plus a fresh-chain migration check on every push and PR to main.
+CI (`.github/workflows/ci.yml`) runs all of the above plus a fresh-chain migration check and a Playwright browser smoke test (`e2e/`, standalone package installed at CI time, no lockfile) on every push and PR to main. CodeQL and Dependabot run alongside.
 
 ## Architecture map
 
@@ -71,11 +71,11 @@ Backend (`backend/app/`):
 - `routers/` HTTP endpoints, one module per area: auth, lessons, reviews, dashboard, study, billing, settings, items, push, stats, account (`/account/export`, `/account/delete`), internal (cron-triggered tasks behind `X-Internal-Token`).
 - `migrations/` Alembic. `seed_dev.py` demo content (uses the importer). `load_sentences.py` CLI that loads a sentence artifact. `tests/` pytest suite, `conftest.py` fixtures.
 
-Reserved keys in the `User.settings` JSON (do not reuse for user preferences): `vacation_started_at` (freeze mode), `last_reminder_sent_at` (push reminder cooldown).
+Reserved keys in the `User.settings` JSON (do not reuse for user preferences): `vacation_started_at` (freeze mode), `last_reminder_sent_at` (push reminder cooldown), `onboarded` (first-run walkthrough done).
 
 Frontend (`frontend/src/`):
-- `lib/` `api.ts` (typed client with refresh-token auto-refresh), `grading.ts` (TS port of server grading, kept byte-identical for the client-side lesson quiz), `offlineQueue.ts` (IndexedDB), `sync.ts` (drains the queue to `/reviews/sync`), `push.ts` (VAPID subscribe), `useFetch.ts` (loading/error/retry hook for all data pages), `shuffle.ts` (Fisher-Yates plus pair spreading for session queues), `typing.ts` (physical-keyboard Latin to Cyrillic mapping), `labels.ts` (shared UI names: Tricky words, band names, level bands), `urlParams.ts` (parses entry query params on the root URL).
-- `components/` one per screen: App (view switch), AuthScreen, Home, LessonSession, ReviewSession, LeechesPage, PracticeSession, CyrillicKeyboard, ProductionInput (shared Russian answer input, physical plus on-screen), ItemInfoPanel (after-answer word details), ItemBrowser, SettingsPage, UpgradePage, ExtraStudyPage, BurnedPage, StatsPage, SessionSummary, LegalPage (renders bundled legal markdown), ui (PageHeader, MascotPlaceholder).
+- `lib/` `api.ts` (typed client with refresh-token auto-refresh), `grading.ts` (TS port of server grading, kept byte-identical for the client-side lesson quiz), `offlineQueue.ts` (IndexedDB: review queue, lesson cache, lesson completion queue), `sync.ts` (drains the review and lesson queues), `push.ts` (VAPID subscribe), `useFetch.ts` (loading/error/retry hook for all data pages), `shuffle.ts` (Fisher-Yates plus pair spreading for session queues), `typing.ts` (physical-keyboard Latin to Cyrillic mapping), `labels.ts` (shared UI names: Tricky words, band names, level bands), `urlParams.ts` (parses entry query params on the root URL: billing/verify/reset/goto).
+- `components/` one per screen: App (view switch), AuthScreen, Onboarding (first-run walkthrough), Home, LessonSession, ReviewSession, LeechesPage, PracticeSession, CyrillicKeyboard, ProductionInput (shared Russian answer input, physical plus on-screen), ItemInfoPanel (after-answer word details plus audio/sentence attribution), ItemBrowser, SettingsPage, UpgradePage, ExtraStudyPage, BurnedPage, StatsPage (includes the review forecast), SessionSummary, LegalPage (renders bundled legal markdown), ui (PageHeader, MascotPlaceholder).
 - `legal/` bundled copies of the three user-facing docs from `docs/legal/`; keep them in sync when the source changes.
 - `public/` service worker (`sw.js`), web manifest, icon.
 
