@@ -91,6 +91,7 @@ export default function AuthScreen({
       <div className="flex flex-col gap-3">
         {mode === "reset" ? (
           <input
+            aria-label="Reset code from email"
             placeholder="reset code from email"
             value={resetToken}
             onChange={(e) => setResetToken(e.target.value)}
@@ -99,6 +100,8 @@ export default function AuthScreen({
         ) : (
           <input
             type="email"
+            autoComplete="email"
+            aria-label="Email"
             placeholder="эл. почта — email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -109,6 +112,8 @@ export default function AuthScreen({
         {mode !== "forgot" && (
           <input
             type="password"
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            aria-label="Password"
             placeholder={mode === "reset" ? "new password (8+ chars)" : "пароль — password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}

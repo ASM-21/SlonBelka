@@ -196,7 +196,14 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
           >
             ✕
           </button>
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2">
+          <div
+            className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2"
+            role="progressbar"
+            aria-label="Lesson progress"
+            aria-valuenow={infoIdx + 1}
+            aria-valuemin={0}
+            aria-valuemax={items.length}
+          >
             <div
               className="h-full rounded-full bg-sb-accent transition-all"
               style={{ width: `${((infoIdx + 1) / items.length) * 100}%` }}
@@ -293,7 +300,14 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
         >
           ✕
         </button>
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2">
+        <div
+          className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2"
+          role="progressbar"
+          aria-label="Quiz progress"
+          aria-valuenow={quizProgress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
           <div
             className="h-full rounded-full bg-sb-accent transition-all"
             style={{ width: `${quizProgress}%` }}
@@ -329,6 +343,7 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
           {isMeaning ? (
             <input
               autoFocus
+              aria-label="English meaning"
               value={input}
               onChange={(e) => {
                 setInput(e.target.value);
@@ -373,6 +388,8 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
       ) : (
         <div className="mt-5 text-center">
           <div
+            role="status"
+            aria-live="polite"
             className={`rounded-xl px-4 py-3 text-lg font-bold ${
               feedback.correct ? "bg-[#DCEFE0] text-[#2E6B45]" : "bg-[#F5DAD8] text-[#A83B33]"
             }`}

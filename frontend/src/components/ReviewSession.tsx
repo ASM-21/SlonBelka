@@ -230,7 +230,14 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
         >
           ✕
         </button>
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2">
+        <div
+          className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2"
+          role="progressbar"
+          aria-label="Review progress"
+          aria-valuenow={progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
           <div
             className="h-full rounded-full bg-sb-accent transition-all"
             style={{ width: `${progress}%` }}
@@ -264,6 +271,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
             {isMeaning ? (
               <input
                 autoFocus
+                aria-label="English meaning"
                 value={input}
                 onChange={(e) => {
                   setInput(e.target.value);
@@ -332,6 +340,8 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
               }`}
             />
             <p
+              role="status"
+              aria-live="polite"
               className={`mt-2 text-sm font-bold ${
                 result?.correct ? "text-[#2E6B45]" : "text-[#A83B33]"
               }`}

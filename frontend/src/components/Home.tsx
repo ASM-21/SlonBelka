@@ -131,7 +131,14 @@ export default function Home({
               {Math.round(progressPct)}% до Ур. {lp.level + 1} · to Lvl {lp.level + 1}
             </span>
           </div>
-          <div className="h-2.5 w-full overflow-hidden rounded-full bg-sb-card2">
+          <div
+            className="h-2.5 w-full overflow-hidden rounded-full bg-sb-card2"
+            role="progressbar"
+            aria-label="Progress to the next level"
+            aria-valuenow={Math.round(progressPct)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
             <div className="h-full rounded-full bg-sb-accent" style={{ width: `${progressPct}%` }} />
           </div>
         </div>
