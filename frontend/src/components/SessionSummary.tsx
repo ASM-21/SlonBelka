@@ -44,7 +44,7 @@ export default function SessionSummary({
           {highlights.map((h) => (
             <span
               key={h}
-              className="rounded-full bg-sb-gold-soft px-3 py-1 text-sm font-semibold text-[#7A5F1E]"
+              className="rounded-full bg-sb-gold-soft px-3 py-1 text-sm font-semibold text-sb-gold-ink"
             >
               {h}
             </span>
@@ -52,7 +52,7 @@ export default function SessionSummary({
         </div>
       )}
 
-      {note && <p className="mt-4 text-sm text-[#7A5F1E]">{note}</p>}
+      {note && <p className="mt-4 text-sm text-sb-gold-ink">{note}</p>}
 
       <button
         onClick={onDone}

@@ -287,7 +287,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
             )}
 
             {nearMiss && (
-              <div className="mt-3 flex items-center justify-between rounded-xl bg-sb-gold-soft px-3.5 py-2.5 text-sm text-[#7A5F1E]">
+              <div className="mt-3 flex items-center justify-between rounded-xl bg-sb-gold-soft px-3.5 py-2.5 text-sm text-sb-gold-ink">
                 <span>Почти! Попробуйте ещё · Almost!</span>
                 <button onClick={() => send(true)} className="font-bold underline">
                   засчитать · accept
@@ -307,7 +307,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
           </div>
         ) : phase === "offline" ? (
           <div className="mt-5 text-center">
-            <div className="rounded-xl bg-sb-gold-soft px-4 py-3 text-[#7A5F1E]">
+            <div className="rounded-xl bg-sb-gold-soft px-4 py-3 text-sb-gold-ink">
               Saved offline. It will sync when you reconnect.
             </div>
             <button

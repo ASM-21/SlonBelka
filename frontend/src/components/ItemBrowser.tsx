@@ -6,7 +6,7 @@ import { PageHeader } from "./ui";
 
 const STATUS_STYLE: Record<string, string> = {
   locked: "bg-sb-card2 text-sb-muted",
-  available: "bg-sb-gold-soft text-[#7A5F1E]",
+  available: "bg-sb-gold-soft text-sb-gold-ink",
   apprentice: "bg-sb-appr text-white",
   guru: "bg-sb-guru text-white",
   master: "bg-sb-master text-white",

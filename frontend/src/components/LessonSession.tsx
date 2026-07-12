@@ -352,7 +352,7 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
           )}
 
           {nearMiss && (
-            <div className="mt-3 flex items-center justify-between rounded-xl bg-sb-gold-soft px-3.5 py-2.5 text-sm text-[#7A5F1E]">
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-sb-gold-soft px-3.5 py-2.5 text-sm text-sb-gold-ink">
               <span>Почти! Попробуйте ещё · Almost!</span>
               <button onClick={() => grade(true)} className="font-bold underline">
                 засчитать · accept

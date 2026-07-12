@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { deleteAccount, exportAccount, getSettings, Settings, setVacation, token, updateSettings } from "../lib/api";
 import { enableReminders, pushSupported } from "../lib/push";
+import { getTheme, setTheme, Theme } from "../lib/theme";
 import { useFetch } from "../lib/useFetch";
 import { LegalDoc } from "./LegalPage";
 import { PageHeader } from "./ui";
@@ -22,6 +23,7 @@ export default function SettingsPage({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [dangerMsg, setDangerMsg] = useState<string | null>(null);
+  const [theme, setThemeState] = useState<Theme>(getTheme);
 
   const downloadExport = async () => {
     setDangerMsg(null);
@@ -101,7 +103,29 @@ export default function SettingsPage({
       </Row>
 
       <Row label="Autoplay audio" hint="Play pronunciation automatically in reviews">
-        <Toggle on={s.autoplay_audio} onClick={() => patch({ autoplay_audio: !s.autoplay_audio })} disabled={saving} />
+        <Toggle
+          on={s.autoplay_audio}
+          onClick={() => patch({ autoplay_audio: !s.autoplay_audio })}
+          disabled={saving}
+          label="Autoplay audio"
+        />
+      </Row>
+
+      <Row label="Appearance" hint="Light, dark, or follow your device">
+        <select
+          aria-label="Appearance"
+          value={theme}
+          onChange={(e) => {
+            const t = e.target.value as Theme;
+            setTheme(t);
+            setThemeState(t);
+          }}
+          className="rounded-lg border border-sb-line bg-sb-card px-2 py-1 text-sm text-sb-ink"
+        >
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
       </Row>
 
       <Row label="Keyboard layout" hint="On-screen Cyrillic keyboard">

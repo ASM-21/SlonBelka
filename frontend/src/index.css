@@ -5,6 +5,7 @@
 /* Slonbelka design tokens (docs/Slonbelka Handoff.dc.html). Exposed to
    Tailwind as the sb-* color family in tailwind.config.js. */
 :root {
+  color-scheme: light;
   --sb-bg: #f5f3ef;
   --sb-card: #fcfbf9;
   --sb-card2: #ede9e1;
@@ -16,11 +17,61 @@
   --sb-accent-soft: #f3e4da;
   --sb-gold: #c1892e;
   --sb-gold-soft: #f5ead3;
+  --sb-gold-ink: #7a5f1e;
   --sb-appr: #e86b90;
   --sb-guru: #9d6fcb;
   --sb-master: #5e8ad6;
   --sb-enl: #4fa396;
   --sb-burned: #26251f;
+}
+
+/* Dark theme. Applied when the user picks Dark (data-theme="dark") or when
+   the OS prefers dark and the user has not forced Light. The band hues stay
+   vivid enough to read on a dark surface; only the neutrals and soft tints
+   are re-tuned. The token list is repeated for the explicit and the
+   system-preference selectors because plain CSS cannot share a var block. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --sb-bg: #1a1917;
+  --sb-card: #242220;
+  --sb-card2: #2f2c28;
+  --sb-ink: #ece8e0;
+  --sb-muted: #9c988d;
+  --sb-line: #3a372f;
+  --sb-accent: #d15a36;
+  --sb-accent2: #b84a2a;
+  --sb-accent-soft: #3a2a22;
+  --sb-gold: #d0982f;
+  --sb-gold-soft: #362d1c;
+  --sb-gold-ink: #e8c877;
+  --sb-appr: #e86b90;
+  --sb-guru: #a97fd6;
+  --sb-master: #6f97dd;
+  --sb-enl: #55b0a1;
+  --sb-burned: #a8a49a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --sb-bg: #1a1917;
+    --sb-card: #242220;
+    --sb-card2: #2f2c28;
+    --sb-ink: #ece8e0;
+    --sb-muted: #9c988d;
+    --sb-line: #3a372f;
+    --sb-accent: #d15a36;
+    --sb-accent2: #b84a2a;
+    --sb-accent-soft: #3a2a22;
+    --sb-gold: #d0982f;
+    --sb-gold-soft: #362d1c;
+    --sb-gold-ink: #e8c877;
+    --sb-appr: #e86b90;
+    --sb-guru: #a97fd6;
+    --sb-master: #6f97dd;
+    --sb-enl: #55b0a1;
+    --sb-burned: #a8a49a;
+  }
 }
 
 @layer base {

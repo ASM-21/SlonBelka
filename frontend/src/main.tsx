@@ -15,6 +15,10 @@ import "@fontsource/nunito/700.css";
 import "@fontsource/nunito/800.css";
 import "./index.css";
 import { initSync } from "./lib/sync";
+import { initTheme } from "./lib/theme";
+
+// Reflect the saved theme before first paint to avoid a flash.
+initTheme();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

@@ -16,6 +16,7 @@ export default {
           "accent-soft": "var(--sb-accent-soft)",
           gold: "var(--sb-gold)",
           "gold-soft": "var(--sb-gold-soft)",
+          "gold-ink": "var(--sb-gold-ink)",
           appr: "var(--sb-appr)",
           guru: "var(--sb-guru)",
           master: "var(--sb-master)",

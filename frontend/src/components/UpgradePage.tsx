@@ -141,7 +141,7 @@ export default function UpgradePage({
         </>
       )}
 
-      {note && <p className="mt-4 rounded-xl bg-sb-gold-soft px-3 py-2 text-sm text-[#7A5F1E]">{note}</p>}
+      {note && <p className="mt-4 rounded-xl bg-sb-gold-soft px-3 py-2 text-sm text-sb-gold-ink">{note}</p>}
 
       {status && (
         <p className="mt-6 text-center text-xs text-sb-muted">

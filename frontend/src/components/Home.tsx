@@ -99,7 +99,7 @@ export default function Home({
       )}
 
       {meFetch.data && !meFetch.data.email_verified && (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-sb-gold-soft px-3 py-2 text-sm text-[#7A5F1E]">
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-sb-gold-soft px-3 py-2 text-sm text-sb-gold-ink">
           <span>Подтвердите почту · Please verify your email.</span>
           {verifySent ? (
             <span className="shrink-0 font-semibold">Sent, check your inbox.</span>
