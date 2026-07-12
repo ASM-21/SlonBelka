@@ -153,6 +153,10 @@ Remaining: the owner audit itself (confirm each Commons file's license tag and l
 - Mobile PWA polish: real PNG icons, iOS apple-touch-icon and status-bar meta, reminder deep-link into reviews, app icon badge for due count.
 - Answer feedback: the continue button turns green or red per result in every session.
 - Infra: rate limits on sync and export, structured request logging, a Playwright browser smoke test in CI, plus CodeQL and Dependabot.
+- Reminder controls: a per-user opt-out and timezone-aware quiet hours the push sweep respects, plus a Show the welcome tour again option.
+- Weekly email digest (`POST /internal/email/digest`, Monday cron): a short progress email to opted-in verified users, reusing the Resend path.
+- Past-due dunning: a home banner links to the billing portal when the subscription is `past_due`.
+- Dark mode: light/dark/system theme with a Settings selector, plus an accessibility pass (accessible names, live-region feedback, progressbar roles, real switch toggles).
 
 ## Reference
 
