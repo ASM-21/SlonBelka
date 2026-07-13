@@ -157,6 +157,8 @@ Remaining: the owner audit itself (confirm each Commons file's license tag and l
 - Weekly email digest (`POST /internal/email/digest`, Monday cron): a short progress email to opted-in verified users, reusing the Resend path.
 - Past-due dunning: a home banner links to the billing portal when the subscription is `past_due`.
 - Dark mode: light/dark/system theme with a Settings selector, plus an accessibility pass (accessible names, live-region feedback, progressbar roles, real switch toggles).
+- Robustness: a React error boundary with a reload fallback, uncaught client errors forwarded to Sentry via `POST /client-errors`, `prefers-reduced-motion` support, and an offline indicator banner.
+- Session controls: a `session_size` setting caps words per review session; a Typo? Mark correct action (`POST /reviews/undo`) flips the last wrong answer to correct within a short window.
 
 ## Reference
 
