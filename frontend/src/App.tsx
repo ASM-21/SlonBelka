@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getSettings, token, updateSettings, verifyEmail } from "./lib/api";
 import { AppParams, parseAppParams } from "./lib/urlParams";
 import AuthScreen from "./components/AuthScreen";
+import OfflineBanner from "./components/OfflineBanner";
 import Onboarding from "./components/Onboarding";
 import Home from "./components/Home";
 import LessonSession from "./components/LessonSession";
@@ -103,6 +104,7 @@ export default function App() {
   if (!authed)
     return (
       <main className="min-h-screen bg-sb-bg text-sb-ink">
+        <OfflineBanner />
         {verifyBanner}
         <AuthScreen
           onAuthed={() => {
@@ -122,6 +124,7 @@ export default function App() {
   if (onboarded === false && !entry.billing && !entry.resetToken)
     return (
       <main className="min-h-screen bg-sb-bg text-sb-ink">
+        <OfflineBanner />
         {verifyBanner}
         <Onboarding
           onFinish={(startLessons) => {
@@ -134,6 +137,7 @@ export default function App() {
 
   return (
     <main className="min-h-screen bg-sb-bg text-sb-ink">
+      <OfflineBanner />
       {verifyBanner}
       {view === "home" && (
         <Home
