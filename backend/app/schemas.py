@@ -231,6 +231,7 @@ class SettingsResponse(BaseModel):
     quiet_hours_enabled: bool = False
     quiet_hours_start: int = 22
     quiet_hours_end: int = 7
+    session_size: int = 0
     frozen: bool = False
 
 
@@ -243,6 +244,7 @@ class SettingsPatch(BaseModel):
     quiet_hours_enabled: bool | None = None
     quiet_hours_start: int | None = Field(default=None, ge=0, le=23)
     quiet_hours_end: int | None = Field(default=None, ge=0, le=23)
+    session_size: int | None = Field(default=None, ge=0, le=200)
 
 
 class VacationRequest(BaseModel):

@@ -1,6 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { addSynonym, getReviews, getSettings, ReviewItem, submitReview, SubmitResult, updateSettings } from "../lib/api";
 import { shuffle, spreadPairs } from "../lib/shuffle";
+
+// Keep every question for the first `words` distinct items (both question
+// types stay together); drop the rest so the session has a bounded length.
+function capToWords(items: ReviewItem[], words: number): ReviewItem[] {
+  if (words <= 0) return items;
+  const kept = new Set<number>();
+  return items.filter((r) => {
+    if (kept.has(r.item_id)) return true;
+    if (kept.size < words) {
+      kept.add(r.item_id);
+      return true;
+    }
+    return false;
+  });
+}
 import { enqueue } from "../lib/offlineQueue";
 import { drainQueue } from "../lib/sync";
 import { useFetch } from "../lib/useFetch";
@@ -49,12 +64,14 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
   });
 
   useEffect(() => {
-    // Shuffle so the order is unpredictable, then spread so a word's two
-    // question types are not back to back (the server sends them adjacent).
-    getReviews()
-      .then((q) => {
-        total.current = q.length;
-        setQueue(spreadPairs(shuffle(q), (r) => r.item_id));
+    // Cap the session to the user's chosen size (settings, 0 = no cap), then
+    // shuffle so the order is unpredictable and spread so a word's two question
+    // types are not back to back (the server sends them adjacent).
+    Promise.all([getReviews(), getSettings().catch(() => null)])
+      .then(([q, s]) => {
+        const limited = capToWords(q, s?.session_size ?? 0);
+        total.current = limited.length;
+        setQueue(spreadPairs(shuffle(limited), (r) => r.item_id));
       })
       .catch(() => setQueue([]));
   }, []);

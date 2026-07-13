@@ -41,6 +41,7 @@ DEFAULT_SETTINGS = {
     "quiet_hours_enabled": False,  # suppress reminders during a nightly window
     "quiet_hours_start": 22,  # local hour [0, 23], inclusive
     "quiet_hours_end": 7,  # local hour [0, 23], exclusive
+    "session_size": 0,  # cap words per review session; 0 means no cap
 }
 ALLOWED_KEYS = set(DEFAULT_SETTINGS)
 VACATION_KEY = "vacation_started_at"

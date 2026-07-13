@@ -111,6 +111,22 @@ export default function SettingsPage({
         />
       </Row>
 
+      <Row label="Review session size" hint="Cap words per review session">
+        <select
+          aria-label="Review session size"
+          value={s.session_size}
+          onChange={(e) => patch({ session_size: Number(e.target.value) })}
+          disabled={saving}
+          className="rounded-lg border border-sb-line bg-sb-card px-2 py-1 text-sm text-sb-ink"
+        >
+          <option value={0}>No limit</option>
+          <option value={10}>10 words</option>
+          <option value={20}>20 words</option>
+          <option value={30}>30 words</option>
+          <option value={50}>50 words</option>
+        </select>
+      </Row>
+
       <Row label="Appearance" hint="Light, dark, or follow your device">
         <select
           aria-label="Appearance"

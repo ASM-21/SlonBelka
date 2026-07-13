@@ -194,6 +194,7 @@ export interface Settings {
   quiet_hours_enabled: boolean;
   quiet_hours_start: number;
   quiet_hours_end: number;
+  session_size: number;
   frozen: boolean;
 }
 
