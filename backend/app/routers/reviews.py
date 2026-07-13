@@ -15,6 +15,7 @@ from app.schemas import (
     SubmitReviewResponse,
     SyncRequest,
     SyncResponse,
+    UndoReviewRequest,
 )
 from app.services import learning
 from app.services.dashboard import build_forecast
@@ -27,6 +28,9 @@ _ERRORS = {
     "bad_question_type": (status.HTTP_400_BAD_REQUEST, "Invalid question type for item"),
     "not_started": (status.HTTP_409_CONFLICT, "Item has not been learned yet"),
     "not_due": (status.HTTP_409_CONFLICT, "Item is not due for review"),
+    "event_not_found": (status.HTTP_404_NOT_FOUND, "Review not found"),
+    "superseded": (status.HTTP_409_CONFLICT, "A newer answer exists for this item"),
+    "too_late": (status.HTTP_409_CONFLICT, "That answer is too old to correct"),
 }
 
 
@@ -60,6 +64,19 @@ def submit(
         answered_at=body.answered_at,
         override=body.override,
     )
+    if "error" in result:
+        code, detail = _ERRORS.get(result["error"], (status.HTTP_400_BAD_REQUEST, result["error"]))
+        raise HTTPException(code, detail)
+    return result
+
+
+@router.post("/undo", response_model=SubmitReviewResponse)
+def undo(
+    body: UndoReviewRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    result = learning.correct_last_review(db, user, body.client_event_id)
     if "error" in result:
         code, detail = _ERRORS.get(result["error"], (status.HTTP_400_BAD_REQUEST, result["error"]))
         raise HTTPException(code, detail)

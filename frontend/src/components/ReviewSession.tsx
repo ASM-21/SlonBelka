@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { addSynonym, getReviews, getSettings, ReviewItem, submitReview, SubmitResult, updateSettings } from "../lib/api";
+import { addSynonym, getReviews, getSettings, ReviewItem, submitReview, SubmitResult, undoReview, updateSettings } from "../lib/api";
 import { shuffle, spreadPairs } from "../lib/shuffle";
 
 // Keep every question for the first `words` distinct items (both question
@@ -36,8 +36,11 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
   const [synAdded, setSynAdded] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [exited, setExited] = useState(false);
+  const [lastEventId, setLastEventId] = useState<string | null>(null);
+  const [undone, setUndone] = useState(false);
   const total = useRef(0);
   const sending = useRef(false);
+  const undoing = useRef(false);
 
   // On-screen keyboard layout: the saved setting, overridable in-session (the
   // toggle also persists the choice). State lives here so the per-question
@@ -81,6 +84,34 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
     if (pending > 0 && (exited || (queue && queue.length === 0))) drainQueue();
   }, [queue, pending, exited]);
 
+  const markCorrect = async () => {
+    if (!lastEventId || undoing.current) return;
+    undoing.current = true;
+    try {
+      const res = await undoReview(lastEventId);
+      setResult(res);
+      setUndone(true);
+      // The wrong answer was a typo: count it correct in the session tally.
+      const cur = queue?.[0];
+      if (cur) {
+        const st = stats.current;
+        st.first.set(`${cur.item_id}:${cur.question_type}`, true);
+        if (res.pass_complete) {
+          let clean = true;
+          for (const [k, ok] of st.first) if (k.startsWith(`${cur.item_id}:`) && !ok) clean = false;
+          st.cleared.set(cur.item_id, clean);
+          if (res.passed) st.passed += 1;
+          if (res.burned) st.burned += 1;
+          if (res.leveled_up && res.current_level) st.levelUp = res.current_level;
+        }
+      }
+    } catch {
+      /* leave the feedback as-is; the user can continue */
+    } finally {
+      undoing.current = false;
+    }
+  };
+
   const cont = () => {
     const wasCorrect = result?.correct ?? false;
     setQueue((q) => {
@@ -92,6 +123,8 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
     setResult(null);
     setSynAdded(false);
     setShowInfo(false);
+    setLastEventId(null);
+    setUndone(false);
     setPhase("answering");
   };
 
@@ -115,6 +148,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
       }
       setNearMiss(false);
       setResult(res);
+      setLastEventId(clientEventId);
       setPhase("feedback");
 
       // Record session outcomes (first attempt per question for accuracy).
@@ -367,6 +401,14 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
             </p>
             <div className="mt-3 font-display text-4xl font-bold text-sb-ink">{result?.stressed_form}</div>
             <div className="mt-1 text-sb-muted">{result?.expected}</div>
+            {result && !result.correct && lastEventId && !undone && (
+              <button
+                onClick={markCorrect}
+                className="mt-3 rounded-lg border border-sb-line px-3 py-1.5 text-sm font-semibold text-sb-muted hover:text-sb-ink"
+              >
+                Это была опечатка · Typo? Mark correct
+              </button>
+            )}
             {result && <StageChip r={result} />}
             {result?.passed && (
               <div className="mt-2 text-sm font-semibold text-sb-gold">Гуру! · Reached Guru</div>

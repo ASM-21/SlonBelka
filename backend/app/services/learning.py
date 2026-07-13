@@ -360,47 +360,9 @@ def submit_review(
     db.add(event)
     db.flush()  # so the pass query sees this event
 
-    events = _pass_events(db, user.id, item.id, state.last_reviewed_at)
-    req = required_types(item)
-    correct_types = {e.question_type for e in events if e.correct} & req
-    incorrect_types = {e.question_type for e in events if not e.correct} & req
-    pass_complete = req <= correct_types
-
-    result_passed = False
-    result_burned = False
-    leveled_up = False
-    if pass_complete:
-        incorrect_count = len(incorrect_types)
-        was_guru = engine.is_guru(state.srs_stage)
-        result = engine.review(
-            stage=state.srs_stage,
-            incorrect_answers=incorrect_count,
-            level=item.level,
-            now=now,
-            already_passed=state.passed_at is not None,
-        )
-        # Update cumulative counts and streak.
-        state.correct_count += len(req) - incorrect_count
-        state.incorrect_count += incorrect_count
-        state.correct_streak = state.correct_streak + 1 if incorrect_count == 0 else 0
-        if was_guru and not engine.is_guru(result.new_stage):
-            state.guru_to_apprentice_demotions += 1
-        state.srs_stage = result.new_stage
-        state.available_at = result.available_at
-        state.last_reviewed_at = now
-        if result.passed and state.passed_at is None:
-            state.passed_at = now
-        if result.burned:
-            state.burned_at = now
-        state.leech_score = engine.leech_score(state.incorrect_count, state.correct_streak)
-        state.is_leech = engine.is_leech(
-            state.incorrect_count, state.correct_streak, state.guru_to_apprentice_demotions
-        )
-        event.srs_after = result.new_stage
-        result_passed = result.passed
-        result_burned = result.burned
-        db.flush()
-        leveled_up = maybe_level_up(db, user)
+    pass_complete, result_passed, result_burned, leveled_up = _finalize_pass(
+        db, user, item, state, now, event
+    )
 
     db.commit()
     db.refresh(state)
@@ -420,3 +382,129 @@ def submit_review(
         "leveled_up": leveled_up,
         "current_level": user.current_level,
     }
+
+
+def _finalize_pass(
+    db: Session,
+    user: User,
+    item: Item,
+    state: UserItemState,
+    now: datetime,
+    completing_event: ReviewEvent,
+) -> tuple[bool, bool, bool, bool]:
+    """Apply the SRS advance if every required question type now has a correct
+    answer in the current pass. Shared by submit_review and the undo path so
+    both derive the pass identically from the event log. Returns
+    (pass_complete, passed, burned, leveled_up)."""
+    events = _pass_events(db, user.id, item.id, state.last_reviewed_at)
+    req = required_types(item)
+    correct_types = {e.question_type for e in events if e.correct} & req
+    incorrect_types = {e.question_type for e in events if not e.correct} & req
+    pass_complete = req <= correct_types
+    if not pass_complete:
+        return False, False, False, False
+
+    incorrect_count = len(incorrect_types)
+    was_guru = engine.is_guru(state.srs_stage)
+    result = engine.review(
+        stage=state.srs_stage,
+        incorrect_answers=incorrect_count,
+        level=item.level,
+        now=now,
+        already_passed=state.passed_at is not None,
+    )
+    # Update cumulative counts and streak.
+    state.correct_count += len(req) - incorrect_count
+    state.incorrect_count += incorrect_count
+    state.correct_streak = state.correct_streak + 1 if incorrect_count == 0 else 0
+    if was_guru and not engine.is_guru(result.new_stage):
+        state.guru_to_apprentice_demotions += 1
+    state.srs_stage = result.new_stage
+    state.available_at = result.available_at
+    state.last_reviewed_at = now
+    if result.passed and state.passed_at is None:
+        state.passed_at = now
+    if result.burned:
+        state.burned_at = now
+    state.leech_score = engine.leech_score(state.incorrect_count, state.correct_streak)
+    state.is_leech = engine.is_leech(
+        state.incorrect_count, state.correct_streak, state.guru_to_apprentice_demotions
+    )
+    completing_event.srs_after = result.new_stage
+    db.flush()
+    leveled_up = maybe_level_up(db, user)
+    return pass_complete, result.passed, result.burned, leveled_up
+
+
+def correct_last_review(db: Session, user: User, client_event_id: str) -> dict:
+    """Convert a just-submitted wrong answer into a correct one (a typo the
+    grader marked wrong). A wrong answer never moved the SRS stage on its own,
+    so this simply flips the event and re-derives the pass. Only the item's
+    most recent answer qualifies, and only within a short window."""
+    from datetime import timedelta
+
+    event = db.scalar(
+        select(ReviewEvent).where(
+            and_(ReviewEvent.user_id == user.id, ReviewEvent.client_event_id == client_event_id)
+        )
+    )
+    if event is None:
+        return {"error": "event_not_found"}
+    item = db.get(Item, event.item_id)
+    state = db.scalar(
+        select(UserItemState).where(
+            and_(UserItemState.user_id == user.id, UserItemState.item_id == event.item_id)
+        )
+    )
+    if item is None or state is None:
+        return {"error": "item_not_found"}
+
+    feedback_answer = item.translation_primary if event.question_type == "meaning" else item.stressed_form
+
+    def _snapshot(pass_complete=False, passed=False, burned=False, leveled_up=False, before=None):
+        return {
+            "status": "corrected",
+            "correct": True,
+            "srs_stage": state.srs_stage,
+            "srs_stage_before": before if before is not None else state.srs_stage,
+            "srs_stage_before_name": engine.STAGE_NAMES[before if before is not None else state.srs_stage],
+            "srs_stage_name": engine.STAGE_NAMES[state.srs_stage],
+            "available_at": state.available_at,
+            "pass_complete": pass_complete,
+            "passed": passed,
+            "burned": burned,
+            "expected": feedback_answer,
+            "stressed_form": item.stressed_form,
+            "leveled_up": leveled_up,
+            "current_level": user.current_level,
+        }
+
+    if event.correct:
+        return _snapshot()  # already correct: idempotent no-op
+
+    # Only the most recent answer for this item may be corrected, and only
+    # briefly after it, so this cannot rewrite older history.
+    newer = db.scalar(
+        select(func.count()).select_from(ReviewEvent).where(
+            and_(
+                ReviewEvent.user_id == user.id,
+                ReviewEvent.item_id == event.item_id,
+                ReviewEvent.answered_at > event.answered_at,
+            )
+        )
+    )
+    if newer:
+        return {"error": "superseded"}
+    if _utcnow() - _aware(event.answered_at) > timedelta(minutes=10):
+        return {"error": "too_late"}
+
+    stage_before = state.srs_stage  # a wrong answer never moved the stage
+    event.correct = True
+    event.was_override = True
+    db.flush()
+    pass_complete, passed, burned, leveled_up = _finalize_pass(
+        db, user, item, state, _aware(event.answered_at), event
+    )
+    db.commit()
+    db.refresh(state)
+    return _snapshot(pass_complete, passed, burned, leveled_up, before=stage_before)

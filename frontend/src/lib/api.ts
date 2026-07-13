@@ -292,6 +292,12 @@ export const submitReview = (body: {
   override?: boolean;
 }) => api<SubmitResult>("/reviews", { method: "POST", body: JSON.stringify(body) });
 
+export const undoReview = (clientEventId: string) =>
+  api<SubmitResult>("/reviews/undo", {
+    method: "POST",
+    body: JSON.stringify({ client_event_id: clientEventId }),
+  });
+
 export const getDashboard = () => api<Dashboard>("/dashboard");
 
 export interface SyncResult {

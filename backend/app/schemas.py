@@ -94,6 +94,10 @@ class SubmitReviewRequest(BaseModel):
     override: bool = False
 
 
+class UndoReviewRequest(BaseModel):
+    client_event_id: str = Field(min_length=1, max_length=64)
+
+
 class SubmitReviewResponse(BaseModel):
     status: str                  # correct | incorrect | near_miss | override | duplicate
     correct: bool
