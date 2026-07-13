@@ -253,6 +253,15 @@ class AccountDeleteRequest(BaseModel):
     password: str = Field(max_length=128)
 
 
+class ClientErrorReport(BaseModel):
+    message: str = Field(max_length=2000)
+    stack: str | None = Field(default=None, max_length=4000)
+    kind: str | None = Field(default=None, max_length=32)
+    component_stack: str | None = Field(default=None, max_length=4000)
+    url: str | None = Field(default=None, max_length=1024)
+    user_agent: str | None = Field(default=None, max_length=512)
+
+
 class VacationResponse(BaseModel):
     frozen: bool
 

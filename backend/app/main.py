@@ -21,7 +21,7 @@ from app.middleware import BodySizeLimitMiddleware, RequestLogMiddleware
 # Make app loggers (request lines, integration warnings) visible under
 # uvicorn, whose own loggers carry their own handlers and are unaffected.
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
-from app.routers import account, auth, billing, dashboard, internal, items, lessons, push, reviews, settings as settings_router, stats, study
+from app.routers import account, auth, billing, client_errors, dashboard, internal, items, lessons, push, reviews, settings as settings_router, stats, study
 
 # Import models so they register on Base before create_all.
 from app import models  # noqa: F401
@@ -72,6 +72,7 @@ app.include_router(stats.router)
 app.include_router(settings_router.router)
 app.include_router(account.router)
 app.include_router(internal.router)
+app.include_router(client_errors.router)
 
 
 @app.get("/health", tags=["health"])

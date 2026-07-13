@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import ErrorBoundary from "./components/ErrorBoundary";
 // Self-hosted fonts: the service worker never caches cross-origin requests,
 // so Google Fonts would break offline. Bundled files get cached like any asset.
 import "@fontsource/manrope/400.css";
@@ -14,15 +15,20 @@ import "@fontsource/baloo-2/800.css";
 import "@fontsource/nunito/700.css";
 import "@fontsource/nunito/800.css";
 import "./index.css";
+import { initErrorReporting } from "./lib/errorReporting";
 import { initSync } from "./lib/sync";
 import { initTheme } from "./lib/theme";
 
 // Reflect the saved theme before first paint to avoid a flash.
 initTheme();
+// Forward uncaught errors to the backend error reporter.
+initErrorReporting();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>,
 );
 

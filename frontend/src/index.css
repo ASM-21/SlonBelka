@@ -94,3 +94,19 @@
 .sb-fade {
   animation: sb-fade 0.25s ease;
 }
+
+/* Respect a reduced-motion preference: drop the entrance animation and make
+   transitions effectively instant, without disabling functionality. */
+@media (prefers-reduced-motion: reduce) {
+  .sb-fade {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
