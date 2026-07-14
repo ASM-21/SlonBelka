@@ -14,3 +14,6 @@ httpx>=0.27
 sentry-sdk[fastapi]>=2.0
 redis>=5
 pywebpush>=2.0
+# The slim runtime image ships no IANA tz database; without this, zoneinfo
+# lookups for push quiet hours fall back to UTC for non-UTC users.
+tzdata>=2024.1

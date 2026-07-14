@@ -48,7 +48,8 @@ def _deliver(to: str, subject: str, body: str, token: str | None) -> None:
             )
             if r.status_code >= 400:
                 logger.error("Resend rejected email to %s: %s %s", to, r.status_code, r.text)
-        except httpx.HTTPError:
+        except Exception:
+            # Never let a mail failure break the auth flow that triggered it.
             logger.error("Resend send to %s failed", to, exc_info=True)
         return
     _outbox.append({"to": to, "subject": subject, "body": body, "token": token})

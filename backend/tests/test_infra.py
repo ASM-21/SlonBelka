@@ -13,6 +13,20 @@ def test_app_boots_and_health_ok_without_sentry_dsn(client):
     assert r.json()["status"] == "ok"
 
 
+def test_bad_sentry_dsn_does_not_crash_startup(monkeypatch):
+    """A malformed DSN or a transport error must only disable Sentry, never
+    raise out of startup and take the whole service down."""
+    from app import main
+
+    monkeypatch.setattr(main.settings, "sentry_dsn", "not-a-valid-dsn")
+
+    def boom(*args, **kwargs):
+        raise ValueError("bad DSN")
+
+    monkeypatch.setattr(main.sentry_sdk, "init", boom)
+    main._init_sentry()  # must not raise
+
+
 def test_email_uses_resend_when_configured(monkeypatch):
     from app.services import email
 
