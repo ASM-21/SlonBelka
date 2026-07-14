@@ -1,4 +1,5 @@
-import { getDashboard, logout as apiLogout } from "../lib/api";
+import { useEffect, useState } from "react";
+import { billingPortal, getBillingStatus, getDashboard, getMe, logout as apiLogout, resendVerification } from "../lib/api";
 import { BAND_LABELS, LEECH_LABEL, LEECH_LABEL_RU } from "../lib/labels";
 import { useFetch } from "../lib/useFetch";
 
@@ -26,11 +27,25 @@ export default function Home({
   onLogout: () => void;
 }) {
   const { status, data: d, retry } = useFetch(getDashboard);
+  const meFetch = useFetch(getMe);
+  const billingFetch = useFetch(getBillingStatus);
+  const [verifySent, setVerifySent] = useState(false);
 
   const logout = async () => {
     await apiLogout();
     onLogout();
   };
+
+  // Mirror the due-review count onto the installed app's icon badge.
+  useEffect(() => {
+    if (!d) return;
+    const nav = navigator as Navigator & {
+      setAppBadge?: (n?: number) => Promise<void>;
+      clearAppBadge?: () => Promise<void>;
+    };
+    if (d.reviews_due > 0) nav.setAppBadge?.(d.reviews_due).catch(() => {});
+    else nav.clearAppBadge?.().catch(() => {});
+  }, [d]);
 
   const lp = d?.level_progress;
   const progressPct = lp && lp.threshold > 0 ? Math.min(100, (lp.fraction / lp.threshold) * 100) : 0;
@@ -63,6 +78,49 @@ export default function Home({
         </div>
       )}
 
+      {billingFetch.data?.status === "past_due" && (
+        <div className="mb-4 rounded-xl border border-red-300 bg-red-50 px-3 py-2.5 text-sm text-red-800">
+          <div className="font-semibold">Оплата не прошла · Your last payment failed</div>
+          <div className="mt-0.5">Update your payment method to keep Premium.</div>
+          <button
+            onClick={async () => {
+              try {
+                const { url } = await billingPortal();
+                window.location.href = url;
+              } catch {
+                /* portal unavailable; nothing to do */
+              }
+            }}
+            className="mt-2 rounded-lg bg-red-700 px-3 py-1.5 text-sm font-bold text-white"
+          >
+            Update payment
+          </button>
+        </div>
+      )}
+
+      {meFetch.data && !meFetch.data.email_verified && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-sb-gold-soft px-3 py-2 text-sm text-sb-gold-ink">
+          <span>Подтвердите почту · Please verify your email.</span>
+          {verifySent ? (
+            <span className="shrink-0 font-semibold">Sent, check your inbox.</span>
+          ) : (
+            <button
+              onClick={async () => {
+                try {
+                  await resendVerification();
+                  setVerifySent(true);
+                } catch {
+                  /* the button stays for another try */
+                }
+              }}
+              className="shrink-0 font-semibold underline"
+            >
+              выслать снова · resend
+            </button>
+          )}
+        </div>
+      )}
+
       {lp && (
         <div className="mb-5">
           <div className="mb-1.5 flex justify-between text-xs font-medium text-sb-muted">
@@ -73,7 +131,14 @@ export default function Home({
               {Math.round(progressPct)}% до Ур. {lp.level + 1} · to Lvl {lp.level + 1}
             </span>
           </div>
-          <div className="h-2.5 w-full overflow-hidden rounded-full bg-sb-card2">
+          <div
+            className="h-2.5 w-full overflow-hidden rounded-full bg-sb-card2"
+            role="progressbar"
+            aria-label="Progress to the next level"
+            aria-valuenow={Math.round(progressPct)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
             <div className="h-full rounded-full bg-sb-accent" style={{ width: `${progressPct}%` }} />
           </div>
         </div>

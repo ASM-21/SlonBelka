@@ -10,13 +10,13 @@ from pydantic import BaseModel, EmailStr, Field
 # ---- auth ----
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: str = Field(min_length=8, max_length=128)
     accepted_terms: bool = False
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(max_length=128)
 
 
 class TokenResponse(BaseModel):
@@ -26,15 +26,15 @@ class TokenResponse(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(max_length=256)
 
 
 class LogoutRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(max_length=256)
 
 
 class VerifyEmailRequest(BaseModel):
-    token: str
+    token: str = Field(max_length=256)
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -42,8 +42,8 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    token: str
-    new_password: str = Field(min_length=8)
+    token: str = Field(max_length=256)
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class UserResponse(BaseModel):
@@ -88,10 +88,14 @@ class ReviewItem(BaseModel):
 class SubmitReviewRequest(BaseModel):
     item_id: int
     question_type: str
-    answer: str = ""
-    client_event_id: str
+    answer: str = Field(default="", max_length=256)
+    client_event_id: str = Field(min_length=1, max_length=64)  # matches the column width
     answered_at: datetime | None = None
     override: bool = False
+
+
+class UndoReviewRequest(BaseModel):
+    client_event_id: str = Field(min_length=1, max_length=64)
 
 
 class SubmitReviewResponse(BaseModel):
@@ -109,6 +113,13 @@ class SubmitReviewResponse(BaseModel):
     stressed_form: str           # always shown so the learner sees correct stress
     leveled_up: bool = False
     current_level: int | None = None
+
+
+class ForecastResponse(BaseModel):
+    due_now: int
+    frozen: bool = False
+    hourly: list[int]  # 24 rolling one-hour buckets from now
+    daily: list[int]   # 7 rolling one-day buckets from now
 
 
 class LevelProgress(BaseModel):
@@ -158,7 +169,7 @@ class LeechItem(BaseModel):
 class PracticeRequest(BaseModel):
     item_id: int
     question_type: str
-    answer: str = ""
+    answer: str = Field(default="", max_length=256)
 
 
 class PracticeResult(BaseModel):
@@ -169,8 +180,8 @@ class PracticeResult(BaseModel):
 
 
 class MnemonicRequest(BaseModel):
-    meaning_mnemonic: str | None = None
-    reading_mnemonic: str | None = None
+    meaning_mnemonic: str | None = Field(default=None, max_length=2000)
+    reading_mnemonic: str | None = Field(default=None, max_length=2000)
 
 
 class MnemonicResponse(BaseModel):
@@ -219,6 +230,12 @@ class SettingsResponse(BaseModel):
     daily_lesson_cap: int
     autoplay_audio: bool
     keyboard_layout: str
+    onboarded: bool = False
+    reminders_enabled: bool = True
+    quiet_hours_enabled: bool = False
+    quiet_hours_start: int = 22
+    quiet_hours_end: int = 7
+    session_size: int = 0
     frozen: bool = False
 
 
@@ -226,10 +243,29 @@ class SettingsPatch(BaseModel):
     daily_lesson_cap: int | None = None
     autoplay_audio: bool | None = None
     keyboard_layout: str | None = None
+    onboarded: bool | None = None
+    reminders_enabled: bool | None = None
+    quiet_hours_enabled: bool | None = None
+    quiet_hours_start: int | None = Field(default=None, ge=0, le=23)
+    quiet_hours_end: int | None = Field(default=None, ge=0, le=23)
+    session_size: int | None = Field(default=None, ge=0, le=200)
 
 
 class VacationRequest(BaseModel):
     on: bool
+
+
+class AccountDeleteRequest(BaseModel):
+    password: str = Field(max_length=128)
+
+
+class ClientErrorReport(BaseModel):
+    message: str = Field(max_length=2000)
+    stack: str | None = Field(default=None, max_length=4000)
+    kind: str | None = Field(default=None, max_length=32)
+    component_stack: str | None = Field(default=None, max_length=4000)
+    url: str | None = Field(default=None, max_length=1024)
+    user_agent: str | None = Field(default=None, max_length=512)
 
 
 class VacationResponse(BaseModel):
@@ -295,6 +331,12 @@ class ItemStateOut(BaseModel):
     burned_at: datetime | None = None
 
 
+class AudioAttribution(BaseModel):
+    source: str | None = None  # wiktionary | tts
+    license: str | None = None
+    attribution: str | None = None
+
+
 class ItemDetail(ItemSummary):
     translations: list[str] = []
     synonyms: list[str] = []
@@ -302,6 +344,7 @@ class ItemDetail(ItemSummary):
     aspect: str | None = None
     ipa: str | None = None
     audio_url: str | None = None
+    audio_attribution: AudioAttribution | None = None
     notes: str | None = None
     sentences: list[SentenceOut] = []
     mnemonic: MnemonicOut | None = None
@@ -319,7 +362,7 @@ class SynonymsResponse(BaseModel):
 
 # ---- push notifications ----
 class PushSubscribeRequest(BaseModel):
-    endpoint: str
+    endpoint: str = Field(max_length=1024)
     keys: dict  # { p256dh, auth }
 
 

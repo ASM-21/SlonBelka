@@ -8,7 +8,7 @@ from __future__ import annotations
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import ExampleSentence, Item, Mnemonic, User, UserItemState
+from app.models import AudioAsset, ExampleSentence, Item, Mnemonic, User, UserItemState
 from app.services import entitlements
 from app.services import synonyms
 from app.srs import engine
@@ -143,6 +143,14 @@ def detail(db: Session, user: User, item_id: int) -> dict | None:
             and_(Mnemonic.item_id == item_id, Mnemonic.user_id == user.id)
         )
     )
+    # Per-file audio credit (E4): the content pipeline records source and
+    # license on audio_assets; surface it so Commons recordings carry their
+    # required attribution in the app.
+    audio_asset = (
+        db.scalar(select(AudioAsset).where(AudioAsset.url == item.audio_url))
+        if item.audio_url
+        else None
+    )
 
     out = _summary(item, state, max_level)
     out.update({
@@ -152,6 +160,14 @@ def detail(db: Session, user: User, item_id: int) -> dict | None:
         "aspect": item.aspect,
         "ipa": item.ipa,
         "audio_url": item.audio_url,
+        "audio_attribution": (
+            {
+                "source": audio_asset.source,
+                "license": audio_asset.license,
+                "attribution": audio_asset.attribution,
+            }
+            if audio_asset else None
+        ),
         "notes": item.notes,
         "sentences": [
             {"ru": s.ru_text, "en": s.en_text, "audio_url": s.audio_url} for s in sentences

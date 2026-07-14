@@ -33,8 +33,10 @@ class Settings(BaseSettings):
     stripe_price_monthly: str | None = None
     stripe_price_yearly: str | None = None
     stripe_price_lifetime: str | None = None
-    billing_success_url: str = "http://localhost:5173/billing/success"
-    billing_cancel_url: str = "http://localhost:5173/billing/cancel"
+    # Query params on the SPA root: the frontend has no path routing, so
+    # App.tsx reads ?billing=... on mount (frontend/src/lib/urlParams.ts).
+    billing_success_url: str = "http://localhost:5173/?billing=success"
+    billing_cancel_url: str = "http://localhost:5173/?billing=cancel"
 
     frontend_origin: str = "http://localhost:5173"
 
@@ -43,6 +45,30 @@ class Settings(BaseSettings):
     azure_speech_region: str | None = None
     stripe_secret_key: str | None = None
     stripe_webhook_secret: str | None = None
+
+    # Error tracking. Unset means Sentry is off (dev, tests).
+    sentry_dsn: str | None = None
+
+    # Redis for cross-process rate limiting. Unset means in-memory (dev, tests).
+    redis_url: str | None = None
+
+    # Resend for real email. Unset means the dev outbox (dev, tests). The
+    # default sender works before a custom domain is verified, but Resend
+    # then only delivers to the account owner's own address.
+    resend_api_key: str | None = None
+    email_from: str = "Slonbelka <onboarding@resend.dev>"
+
+    # Web push (VAPID). Both keys unset means push delivery is off.
+    vapid_public_key: str | None = None
+    vapid_private_key: str | None = None
+    vapid_subject: str = "mailto:asmspartan21@gmail.com"
+
+    # Shared secret for /internal/* task endpoints (cron triggers).
+    internal_task_token: str | None = None
+
+    # Largest accepted request body. Review sync batches and Stripe webhooks
+    # are the biggest legitimate payloads and stay well under this.
+    max_body_bytes: int = 65536
 
     @model_validator(mode="after")
     def _require_prod_secret(self) -> "Settings":

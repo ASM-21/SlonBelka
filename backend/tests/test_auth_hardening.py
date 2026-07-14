@@ -117,3 +117,31 @@ def test_login_rate_limited(client):
         for _ in range(12)
     ]
     assert 429 in codes
+
+
+def test_password_max_length(client):
+    r = _register(client, password="p" * 129)
+    assert r.status_code == 422
+
+
+def test_oversized_body_is_rejected(client):
+    # Content-Length above the cap gets a 413 before the app runs.
+    r = client.post(
+        "/auth/login",
+        json={"email": "x@e.com", "password": "p" * 70000},
+    )
+    assert r.status_code == 413
+
+
+def test_oversized_client_event_id_is_rejected(client, auth):
+    r = client.post(
+        "/reviews",
+        headers=auth,
+        json={
+            "item_id": 1,
+            "question_type": "meaning",
+            "answer": "x",
+            "client_event_id": "c" * 65,
+        },
+    )
+    assert r.status_code == 422

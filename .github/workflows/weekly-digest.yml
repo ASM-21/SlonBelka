@@ -1,0 +1,19 @@
+name: Weekly digest
+
+# Emails opted-in users a short weekly progress summary. Monday 15:00 UTC.
+on:
+  schedule:
+    - cron: "0 15 * * 1"
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the weekly digest
+        run: |
+          curl --fail-with-body -sS -X POST "$DIGEST_RUN_URL" \
+            -H "X-Internal-Token: $INTERNAL_TASK_TOKEN"
+        env:
+          DIGEST_RUN_URL: ${{ secrets.DIGEST_RUN_URL }}
+          INTERNAL_TASK_TOKEN: ${{ secrets.INTERNAL_TASK_TOKEN }}

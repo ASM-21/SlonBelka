@@ -153,6 +153,11 @@ export interface ItemDetail extends ItemSummary {
   aspect?: string | null;
   ipa?: string | null;
   audio_url?: string | null;
+  audio_attribution?: {
+    source?: string | null;
+    license?: string | null;
+    attribution?: string | null;
+  } | null;
   notes?: string | null;
   sentences: { ru: string; en: string; audio_url?: string | null }[];
   mnemonic?: { meaning?: string | null; reading?: string | null } | null;
@@ -184,6 +189,12 @@ export interface Settings {
   daily_lesson_cap: number;
   autoplay_audio: boolean;
   keyboard_layout: string;
+  onboarded: boolean;
+  reminders_enabled: boolean;
+  quiet_hours_enabled: boolean;
+  quiet_hours_start: number;
+  quiet_hours_end: number;
+  session_size: number;
   frozen: boolean;
 }
 
@@ -235,6 +246,15 @@ export const logout = async () => {
 export const forgotPassword = (email: string) =>
   api<{ sent: boolean }>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) });
 
+export const verifyEmail = (verifyToken: string) =>
+  api<{ verified: boolean }>("/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ token: verifyToken }),
+  });
+
+export const resendVerification = () =>
+  api<{ verified?: boolean; sent?: boolean }>("/auth/resend-verification", { method: "POST" });
+
 export const resetPassword = (resetToken: string, newPassword: string) =>
   api<{ reset: boolean }>("/auth/reset-password", {
     method: "POST",
@@ -255,6 +275,15 @@ export const completeLessons = (item_ids: number[]) =>
 
 export const getReviews = () => api<ReviewItem[]>("/reviews");
 
+export interface Forecast {
+  due_now: number;
+  frozen: boolean;
+  hourly: number[]; // 24 rolling one-hour buckets from now
+  daily: number[]; // 7 rolling one-day buckets from now
+}
+
+export const getForecast = () => api<Forecast>("/reviews/forecast");
+
 export const submitReview = (body: {
   item_id: number;
   question_type: string;
@@ -262,6 +291,12 @@ export const submitReview = (body: {
   client_event_id: string;
   override?: boolean;
 }) => api<SubmitResult>("/reviews", { method: "POST", body: JSON.stringify(body) });
+
+export const undoReview = (clientEventId: string) =>
+  api<SubmitResult>("/reviews/undo", {
+    method: "POST",
+    body: JSON.stringify({ client_event_id: clientEventId }),
+  });
 
 export const getDashboard = () => api<Dashboard>("/dashboard");
 
@@ -389,5 +424,10 @@ export const getStats = () => api<Stats>("/stats");
 export const getSettings = () => api<Settings>("/settings");
 export const updateSettings = (patch: Partial<Omit<Settings, "frozen">>) =>
   api<Settings>("/settings", { method: "PATCH", body: JSON.stringify(patch) });
+export const exportAccount = () => api<Record<string, unknown>>("/account/export");
+
+export const deleteAccount = (password: string) =>
+  api<void>("/account/delete", { method: "POST", body: JSON.stringify({ password }) });
+
 export const setVacation = (on: boolean) =>
   api<{ frozen: boolean }>("/settings/vacation", { method: "POST", body: JSON.stringify({ on }) });

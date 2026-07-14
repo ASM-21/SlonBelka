@@ -70,6 +70,38 @@ def test_settings_defaults_and_patch(client, auth):
     assert len(client.get("/lessons", headers=auth).json()) == 5
 
 
+def test_onboarded_flag_round_trips(client, auth):
+    assert client.get("/settings", headers=auth).json()["onboarded"] is False
+    r = client.patch("/settings", json={"onboarded": True}, headers=auth)
+    assert r.json()["onboarded"] is True
+    assert client.get("/settings", headers=auth).json()["onboarded"] is True
+
+
+def test_reminder_and_session_settings_round_trip(client, auth):
+    s = client.get("/settings", headers=auth).json()
+    assert s["reminders_enabled"] is True
+    assert s["quiet_hours_enabled"] is False
+    assert s["session_size"] == 0
+
+    r = client.patch("/settings", headers=auth, json={
+        "reminders_enabled": False,
+        "quiet_hours_enabled": True,
+        "quiet_hours_start": 23,
+        "quiet_hours_end": 6,
+        "session_size": 20,
+    })
+    body = r.json()
+    assert body["reminders_enabled"] is False
+    assert body["quiet_hours_enabled"] is True
+    assert body["quiet_hours_start"] == 23
+    assert body["quiet_hours_end"] == 6
+    assert body["session_size"] == 20
+
+    # Out-of-range values are rejected by validation.
+    assert client.patch("/settings", headers=auth, json={"quiet_hours_start": 24}).status_code == 422
+    assert client.patch("/settings", headers=auth, json={"session_size": 500}).status_code == 422
+
+
 # --------------------------------------------------------------------------- #
 # Vacation
 # --------------------------------------------------------------------------- #

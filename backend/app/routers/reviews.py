@@ -8,8 +8,18 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import User
 from app.routers.auth import current_user
-from app.schemas import ReviewItem, SubmitReviewRequest, SubmitReviewResponse, SyncRequest, SyncResponse
+from app.schemas import (
+    ForecastResponse,
+    ReviewItem,
+    SubmitReviewRequest,
+    SubmitReviewResponse,
+    SyncRequest,
+    SyncResponse,
+    UndoReviewRequest,
+)
 from app.services import learning
+from app.services.dashboard import build_forecast
+from app.services.ratelimit import rate_limit
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
@@ -18,6 +28,9 @@ _ERRORS = {
     "bad_question_type": (status.HTTP_400_BAD_REQUEST, "Invalid question type for item"),
     "not_started": (status.HTTP_409_CONFLICT, "Item has not been learned yet"),
     "not_due": (status.HTTP_409_CONFLICT, "Item is not due for review"),
+    "event_not_found": (status.HTTP_404_NOT_FOUND, "Review not found"),
+    "superseded": (status.HTTP_409_CONFLICT, "A newer answer exists for this item"),
+    "too_late": (status.HTTP_409_CONFLICT, "That answer is too old to correct"),
 }
 
 
@@ -26,6 +39,13 @@ def list_reviews(
     user: User = Depends(current_user), db: Session = Depends(get_db)
 ) -> list:
     return learning.get_reviews(db, user)
+
+
+@router.get("/forecast", response_model=ForecastResponse)
+def forecast(
+    user: User = Depends(current_user), db: Session = Depends(get_db)
+) -> dict:
+    return build_forecast(db, user)
 
 
 @router.post("", response_model=SubmitReviewResponse)
@@ -50,7 +70,26 @@ def submit(
     return result
 
 
-@router.post("/sync", response_model=SyncResponse)
+@router.post("/undo", response_model=SubmitReviewResponse)
+def undo(
+    body: UndoReviewRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    result = learning.correct_last_review(db, user, body.client_event_id)
+    if "error" in result:
+        code, detail = _ERRORS.get(result["error"], (status.HTTP_400_BAD_REQUEST, result["error"]))
+        raise HTTPException(code, detail)
+    return result
+
+
+@router.post(
+    "/sync",
+    response_model=SyncResponse,
+    # Each call can carry a whole offline session; 30/min per IP is far above
+    # anything the sync client does and still stops abuse.
+    dependencies=[Depends(rate_limit("reviews_sync", limit=30, window_seconds=60))],
+)
 def sync(
     body: SyncRequest,
     user: User = Depends(current_user),

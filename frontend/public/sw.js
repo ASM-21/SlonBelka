@@ -5,7 +5,7 @@
 // API calls (cross-origin) are never cached; offline review answers are handled
 // by the app's IndexedDB queue, not here.
 
-const CACHE = "slonbelka-v2"; // bumped for the reskin so stale shells refresh
+const CACHE = "slonbelka-v3"; // bumped so stale shells refresh
 const SHELL = ["/", "/index.html", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -45,8 +45,8 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
-// Show a reminder when the server sends a push (delivery is server-side/out of
-// scope here, but the handler is ready).
+// Show a reminder when the server sends a push. The payload may carry a
+// due-review count, mirrored onto the app icon badge where supported.
 self.addEventListener("push", (event) => {
   let data = { title: "Slonbelka", body: "You have reviews waiting." };
   try {
@@ -54,10 +54,31 @@ self.addEventListener("push", (event) => {
   } catch (_) {
     /* keep defaults */
   }
-  event.waitUntil(self.registration.showNotification(data.title, { body: data.body }));
+  const work = [
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+    }),
+  ];
+  if (typeof data.count === "number" && self.navigator.setAppBadge) {
+    work.push(self.navigator.setAppBadge(data.count).catch(() => {}));
+  }
+  event.waitUntil(Promise.all(work));
 });
 
+// Clicking the reminder lands directly on the review session: focus an open
+// tab if there is one (telling it to navigate), otherwise open a fresh one.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  event.waitUntil(self.clients.openWindow("/"));
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const open = clients.find((c) => "focus" in c);
+      if (open) {
+        open.postMessage({ type: "goto", view: "reviews" });
+        return open.focus();
+      }
+      return self.clients.openWindow("/?goto=reviews");
+    }),
+  );
 });

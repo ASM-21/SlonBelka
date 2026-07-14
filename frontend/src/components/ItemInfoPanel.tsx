@@ -97,6 +97,15 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
           >
             ▶ прослушать · play
           </button>
+          {item.audio_attribution && (
+            <div className="mt-1 text-[11px] text-sb-muted">
+              {item.audio_attribution.source === "tts"
+                ? "Generated pronunciation (TTS)"
+                : [item.audio_attribution.attribution, item.audio_attribution.license]
+                    .filter(Boolean)
+                    .join(" · ") || "Recording via Wikimedia Commons"}
+            </div>
+          )}
         </Row>
       )}
 
@@ -148,6 +157,9 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
               </li>
             ))}
           </ul>
+          <div className="mt-1.5 text-[11px] text-sb-muted">
+            Sentences from Tatoeba.org · CC BY 2.0 FR
+          </div>
         </Row>
       )}
 

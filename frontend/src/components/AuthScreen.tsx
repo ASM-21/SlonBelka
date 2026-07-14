@@ -3,19 +3,25 @@ import { forgotPassword, login, register, resetPassword, token } from "../lib/ap
 import { LegalDoc } from "./LegalPage";
 import { MascotPlaceholder } from "./ui";
 
-type Mode = "login" | "register" | "forgot" | "reset";
+export type Mode = "login" | "register" | "forgot" | "reset";
 
 export default function AuthScreen({
   onAuthed,
   onShowLegal,
+  initialMode,
+  initialResetToken,
 }: {
   onAuthed: () => void;
   onShowLegal: (doc: LegalDoc) => void;
+  // Set when the user arrives via a password-reset email link, so they land
+  // directly on the new-password form with the code prefilled.
+  initialMode?: Mode;
+  initialResetToken?: string;
 }) {
-  const [mode, setMode] = useState<Mode>("register");
+  const [mode, setMode] = useState<Mode>(initialMode ?? "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [resetToken, setResetToken] = useState("");
+  const [resetToken, setResetToken] = useState(initialResetToken ?? "");
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -85,6 +91,7 @@ export default function AuthScreen({
       <div className="flex flex-col gap-3">
         {mode === "reset" ? (
           <input
+            aria-label="Reset code from email"
             placeholder="reset code from email"
             value={resetToken}
             onChange={(e) => setResetToken(e.target.value)}
@@ -93,6 +100,8 @@ export default function AuthScreen({
         ) : (
           <input
             type="email"
+            autoComplete="email"
+            aria-label="Email"
             placeholder="эл. почта — email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -103,6 +112,8 @@ export default function AuthScreen({
         {mode !== "forgot" && (
           <input
             type="password"
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            aria-label="Password"
             placeholder={mode === "reset" ? "new password (8+ chars)" : "пароль — password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}

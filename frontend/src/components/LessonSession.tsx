@@ -2,6 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import SessionSummary from "./SessionSummary";
 import { completeLessons, getLessons, getSettings, LessonItem, updateSettings } from "../lib/api";
 import { gradeMeaning, gradeProduction } from "../lib/grading";
+import {
+  cacheLessons,
+  cachedLessons,
+  clearCachedLessons,
+  enqueueLessonCompletion,
+} from "../lib/offlineQueue";
 import { shuffle, spreadPairs } from "../lib/shuffle";
 import { useFetch } from "../lib/useFetch";
 import { Layout } from "./CyrillicKeyboard";
@@ -40,7 +46,7 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
   const [input, setInput] = useState("");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [nearMiss, setNearMiss] = useState(false);
-  const [summary, setSummary] = useState<{ started: number } | null>(null);
+  const [summary, setSummary] = useState<{ started: number; offline?: boolean } | null>(null);
   const quizStats = useRef({ first: new Map<string, boolean>() });
 
   // On-screen keyboard layout: saved setting, overridable in-session.
@@ -57,7 +63,17 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
   };
 
   useEffect(() => {
-    getLessons().then(setItems).catch(() => setItems([]));
+    // Cache each successful fetch so the lesson still works offline; fall
+    // back to the cached list when the network is unavailable.
+    getLessons()
+      .then((ls) => {
+        setItems(ls);
+        cacheLessons(ls);
+      })
+      .catch(async () => {
+        const cached = await cachedLessons<LessonItem>();
+        setItems(cached ?? []);
+      });
   }, []);
 
   const remainingItems = useMemo(
@@ -80,12 +96,17 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
   const commit = async () => {
     if (!items) return;
     setPhase("committing");
+    const ids = items.map((i) => i.id);
     try {
-      const res = await completeLessons(items.map((i) => i.id));
+      const res = await completeLessons(ids);
       setSummary({ started: res.started.length });
     } catch {
-      setSummary({ started: 0 });
+      // Offline: queue the completion for sync and report the lesson as done.
+      await enqueueLessonCompletion(ids);
+      setSummary({ started: ids.length, offline: true });
     }
+    // Either way these words are used up; a stale cache would re-offer them.
+    clearCachedLessons();
     setPhase("done");
   };
 
@@ -175,7 +196,14 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
           >
             ✕
           </button>
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2">
+          <div
+            className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2"
+            role="progressbar"
+            aria-label="Lesson progress"
+            aria-valuenow={infoIdx + 1}
+            aria-valuemin={0}
+            aria-valuemax={items.length}
+          >
             <div
               className="h-full rounded-full bg-sb-accent transition-all"
               style={{ width: `${((infoIdx + 1) / items.length) * 100}%` }}
@@ -247,6 +275,11 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
           { label: "Words learned", value: String(summary?.started ?? items.length) },
           { label: "Quiz accuracy", value: acc != null ? `${acc}%` : "—" },
         ]}
+        note={
+          summary?.offline
+            ? "Saved offline. The words will be committed when you're back online."
+            : undefined
+        }
         onDone={onDone}
       />
     );
@@ -267,7 +300,14 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
         >
           ✕
         </button>
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2">
+        <div
+          className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2"
+          role="progressbar"
+          aria-label="Quiz progress"
+          aria-valuenow={quizProgress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
           <div
             className="h-full rounded-full bg-sb-accent transition-all"
             style={{ width: `${quizProgress}%` }}
@@ -303,6 +343,7 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
           {isMeaning ? (
             <input
               autoFocus
+              aria-label="English meaning"
               value={input}
               onChange={(e) => {
                 setInput(e.target.value);
@@ -326,7 +367,7 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
           )}
 
           {nearMiss && (
-            <div className="mt-3 flex items-center justify-between rounded-xl bg-sb-gold-soft px-3.5 py-2.5 text-sm text-[#7A5F1E]">
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-sb-gold-soft px-3.5 py-2.5 text-sm text-sb-gold-ink">
               <span>Почти! Попробуйте ещё · Almost!</span>
               <button onClick={() => grade(true)} className="font-bold underline">
                 засчитать · accept
@@ -347,6 +388,8 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
       ) : (
         <div className="mt-5 text-center">
           <div
+            role="status"
+            aria-live="polite"
             className={`rounded-xl px-4 py-3 text-lg font-bold ${
               feedback.correct ? "bg-[#DCEFE0] text-[#2E6B45]" : "bg-[#F5DAD8] text-[#A83B33]"
             }`}
@@ -357,7 +400,9 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
           <button
             autoFocus
             onClick={next}
-            className="mt-5 w-full rounded-xl bg-sb-ink py-3 font-bold text-white"
+            className={`mt-5 w-full rounded-xl py-3 font-bold text-white ${
+              feedback.correct ? "bg-[#2E6B45]" : "bg-[#A83B33]"
+            }`}
           >
             Дальше · Continue
           </button>

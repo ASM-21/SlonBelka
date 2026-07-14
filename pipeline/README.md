@@ -2,6 +2,45 @@
 
 For v1 the deck is curated and frequency-ordered, built from open data. Before building any of that, run the spike to confirm the data foundation holds.
 
+## Example sentences: `sentences.py` (stage C2)
+
+Joins Tatoeba sentence exports to the deck and emits a versioned JSON artifact for the backend loader. Standalone and stdlib-only; it never touches the network or the database.
+
+### Inputs
+
+1. The deck items as JSON: a list of `{"external_id": ..., "lemma": ...}`. Export it with a one-liner against your database, for example:
+
+```bash
+cd ../backend
+python -c "from app.db import SessionLocal; from app.models import Item; import json; db = SessionLocal(); print(json.dumps([{'external_id': i.external_id, 'lemma': i.lemma} for i in db.query(Item).all()], ensure_ascii=False))" > ../pipeline/items.json
+```
+
+2. Tatoeba exports from https://downloads.tatoeba.org/exports/ (attribute Tatoeba and contributors, sentences are CC-BY 2.0 FR):
+   - `per_language/rus/rus_sentences.tsv` (id, lang, text)
+   - `per_language/eng/eng_sentences.tsv`
+   - `links.csv` (sentence_id, translation_id; the full export works, a per-language subset is faster)
+
+### Run
+
+```bash
+python sentences.py --items items.json \
+  --rus-sentences rus_sentences.tsv --eng-sentences eng_sentences.tsv \
+  --links links.csv --out sentences_artifact.json
+```
+
+Selection per lemma: exact-word match (case-insensitive, ё folded to е), an English translation required, at most 80 characters, shortest first, up to 2 per lemma (`--per-lemma`, `--max-len`). Known limitation: lemma-form matching only, so heavily inflected words get fewer hits.
+
+### Load
+
+```bash
+cd ../backend
+python -m app.load_sentences ../pipeline/sentences_artifact.json
+```
+
+Loading is idempotent: it upserts on `(item, source_ref)`, so rerunning the same artifact is a zero-diff no-op and edited translations update in place. Unknown `external_id`s are skipped and reported, malformed records abort the whole load. Sentence audio stays NULL for now; a TTS stage can fill `audio_url` later.
+
+Tests: `python -m pytest -q` from this directory (fixture data only, no downloads).
+
 ## The spike: `spike_data_check.py`
 
 It joins the top-N Russian frequency tokens against the Kaikki (Wiktextract) Russian dictionary and reports:

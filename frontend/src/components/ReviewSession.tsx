@@ -1,6 +1,21 @@
 import { useEffect, useRef, useState } from "react";
-import { addSynonym, getReviews, getSettings, ReviewItem, submitReview, SubmitResult, updateSettings } from "../lib/api";
+import { addSynonym, getReviews, getSettings, ReviewItem, submitReview, SubmitResult, undoReview, updateSettings } from "../lib/api";
 import { shuffle, spreadPairs } from "../lib/shuffle";
+
+// Keep every question for the first `words` distinct items (both question
+// types stay together); drop the rest so the session has a bounded length.
+function capToWords(items: ReviewItem[], words: number): ReviewItem[] {
+  if (words <= 0) return items;
+  const kept = new Set<number>();
+  return items.filter((r) => {
+    if (kept.has(r.item_id)) return true;
+    if (kept.size < words) {
+      kept.add(r.item_id);
+      return true;
+    }
+    return false;
+  });
+}
 import { enqueue } from "../lib/offlineQueue";
 import { drainQueue } from "../lib/sync";
 import { useFetch } from "../lib/useFetch";
@@ -21,8 +36,11 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
   const [synAdded, setSynAdded] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [exited, setExited] = useState(false);
+  const [lastEventId, setLastEventId] = useState<string | null>(null);
+  const [undone, setUndone] = useState(false);
   const total = useRef(0);
   const sending = useRef(false);
+  const undoing = useRef(false);
 
   // On-screen keyboard layout: the saved setting, overridable in-session (the
   // toggle also persists the choice). State lives here so the per-question
@@ -49,12 +67,14 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
   });
 
   useEffect(() => {
-    // Shuffle so the order is unpredictable, then spread so a word's two
-    // question types are not back to back (the server sends them adjacent).
-    getReviews()
-      .then((q) => {
-        total.current = q.length;
-        setQueue(spreadPairs(shuffle(q), (r) => r.item_id));
+    // Cap the session to the user's chosen size (settings, 0 = no cap), then
+    // shuffle so the order is unpredictable and spread so a word's two question
+    // types are not back to back (the server sends them adjacent).
+    Promise.all([getReviews(), getSettings().catch(() => null)])
+      .then(([q, s]) => {
+        const limited = capToWords(q, s?.session_size ?? 0);
+        total.current = limited.length;
+        setQueue(spreadPairs(shuffle(limited), (r) => r.item_id));
       })
       .catch(() => setQueue([]));
   }, []);
@@ -63,6 +83,34 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     if (pending > 0 && (exited || (queue && queue.length === 0))) drainQueue();
   }, [queue, pending, exited]);
+
+  const markCorrect = async () => {
+    if (!lastEventId || undoing.current) return;
+    undoing.current = true;
+    try {
+      const res = await undoReview(lastEventId);
+      setResult(res);
+      setUndone(true);
+      // The wrong answer was a typo: count it correct in the session tally.
+      const cur = queue?.[0];
+      if (cur) {
+        const st = stats.current;
+        st.first.set(`${cur.item_id}:${cur.question_type}`, true);
+        if (res.pass_complete) {
+          let clean = true;
+          for (const [k, ok] of st.first) if (k.startsWith(`${cur.item_id}:`) && !ok) clean = false;
+          st.cleared.set(cur.item_id, clean);
+          if (res.passed) st.passed += 1;
+          if (res.burned) st.burned += 1;
+          if (res.leveled_up && res.current_level) st.levelUp = res.current_level;
+        }
+      }
+    } catch {
+      /* leave the feedback as-is; the user can continue */
+    } finally {
+      undoing.current = false;
+    }
+  };
 
   const cont = () => {
     const wasCorrect = result?.correct ?? false;
@@ -75,6 +123,8 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
     setResult(null);
     setSynAdded(false);
     setShowInfo(false);
+    setLastEventId(null);
+    setUndone(false);
     setPhase("answering");
   };
 
@@ -98,6 +148,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
       }
       setNearMiss(false);
       setResult(res);
+      setLastEventId(clientEventId);
       setPhase("feedback");
 
       // Record session outcomes (first attempt per question for accuracy).
@@ -230,7 +281,14 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
         >
           ✕
         </button>
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2">
+        <div
+          className="h-2 flex-1 overflow-hidden rounded-full bg-sb-card2"
+          role="progressbar"
+          aria-label="Review progress"
+          aria-valuenow={progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
           <div
             className="h-full rounded-full bg-sb-accent transition-all"
             style={{ width: `${progress}%` }}
@@ -264,6 +322,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
             {isMeaning ? (
               <input
                 autoFocus
+                aria-label="English meaning"
                 value={input}
                 onChange={(e) => {
                   setInput(e.target.value);
@@ -287,7 +346,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
             )}
 
             {nearMiss && (
-              <div className="mt-3 flex items-center justify-between rounded-xl bg-sb-gold-soft px-3.5 py-2.5 text-sm text-[#7A5F1E]">
+              <div className="mt-3 flex items-center justify-between rounded-xl bg-sb-gold-soft px-3.5 py-2.5 text-sm text-sb-gold-ink">
                 <span>Почти! Попробуйте ещё · Almost!</span>
                 <button onClick={() => send(true)} className="font-bold underline">
                   засчитать · accept
@@ -307,7 +366,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
           </div>
         ) : phase === "offline" ? (
           <div className="mt-5 text-center">
-            <div className="rounded-xl bg-sb-gold-soft px-4 py-3 text-[#7A5F1E]">
+            <div className="rounded-xl bg-sb-gold-soft px-4 py-3 text-sb-gold-ink">
               Saved offline. It will sync when you reconnect.
             </div>
             <button
@@ -332,6 +391,8 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
               }`}
             />
             <p
+              role="status"
+              aria-live="polite"
               className={`mt-2 text-sm font-bold ${
                 result?.correct ? "text-[#2E6B45]" : "text-[#A83B33]"
               }`}
@@ -340,6 +401,14 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
             </p>
             <div className="mt-3 font-display text-4xl font-bold text-sb-ink">{result?.stressed_form}</div>
             <div className="mt-1 text-sb-muted">{result?.expected}</div>
+            {result && !result.correct && lastEventId && !undone && (
+              <button
+                onClick={markCorrect}
+                className="mt-3 rounded-lg border border-sb-line px-3 py-1.5 text-sm font-semibold text-sb-muted hover:text-sb-ink"
+              >
+                Это была опечатка · Typo? Mark correct
+              </button>
+            )}
             {result && <StageChip r={result} />}
             {result?.passed && (
               <div className="mt-2 text-sm font-semibold text-sb-gold">Гуру! · Reached Guru</div>
@@ -383,7 +452,9 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
             <button
               autoFocus
               onClick={cont}
-              className="mt-6 w-full rounded-xl bg-sb-ink py-3 font-bold text-white"
+              className={`mt-6 w-full rounded-xl py-3 font-bold text-white ${
+                result?.correct ? "bg-[#2E6B45]" : "bg-[#A83B33]"
+              }`}
             >
               Дальше · Continue
             </button>

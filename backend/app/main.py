@@ -7,17 +7,34 @@ fully tested; lesson/review/sync endpoints come in later phases (see docs/PHASE0
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
+import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db import Base, engine
-from app.routers import auth, billing, dashboard, items, lessons, push, reviews, settings as settings_router, stats, study
+from app.middleware import BodySizeLimitMiddleware, RequestLogMiddleware
+
+# Make app loggers (request lines, integration warnings) visible under
+# uvicorn, whose own loggers carry their own handlers and are unaffected.
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+from app.routers import account, auth, billing, client_errors, dashboard, internal, items, lessons, push, reviews, settings as settings_router, stats, study
 
 # Import models so they register on Base before create_all.
 from app import models  # noqa: F401
+
+# No DSN means Sentry stays off (dev, tests). The FastAPI/Starlette
+# integration is enabled automatically by the SDK.
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.environment,
+        send_default_pii=False,
+        traces_sample_rate=0.0,
+    )
 
 
 @asynccontextmanager
@@ -30,6 +47,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Slonbelka API", version="0.1.0", lifespan=lifespan)
 
+# Middleware order (last added runs outermost): the request log wraps
+# everything so every response is timed, CORS next so even 413s carry CORS
+# headers, the body limit innermost.
+app.add_middleware(BodySizeLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_origin],
@@ -37,6 +58,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RequestLogMiddleware)
 
 app.include_router(auth.router)
 app.include_router(lessons.router)
@@ -48,6 +70,9 @@ app.include_router(items.router)
 app.include_router(push.router)
 app.include_router(stats.router)
 app.include_router(settings_router.router)
+app.include_router(account.router)
+app.include_router(internal.router)
+app.include_router(client_errors.router)
 
 
 @app.get("/health", tags=["health"])

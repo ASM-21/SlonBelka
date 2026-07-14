@@ -57,6 +57,7 @@ export default function ProductionInput({
       <input
         ref={ref}
         autoFocus
+        aria-label="Your answer in Russian"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}

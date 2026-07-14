@@ -1,0 +1,20 @@
+name: Push reminders
+
+# Triggers the backend's review-reminder sweep. The endpoint is idempotent
+# under its per-user cooldown, so an occasional double fire is harmless.
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the reminder sweep
+        run: |
+          curl --fail-with-body -sS -X POST "$PUSH_RUN_URL" \
+            -H "X-Internal-Token: $INTERNAL_TASK_TOKEN"
+        env:
+          PUSH_RUN_URL: ${{ secrets.PUSH_RUN_URL }}
+          INTERNAL_TASK_TOKEN: ${{ secrets.INTERNAL_TASK_TOKEN }}

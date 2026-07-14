@@ -74,12 +74,16 @@ export default function CyrillicKeyboard({
     <div className="select-none rounded-2xl bg-sb-card2 p-2">
       <div className="mb-1 flex items-center justify-between px-1 text-xs font-semibold text-sb-muted">
         <span>{active === "jcuken" ? "ЙЦУКЕН · JCUKEN" : "Фонетическая · Phonetic"}</span>
-        <button onClick={toggle} className="rounded px-2 py-0.5 font-bold text-sb-accent hover:bg-sb-line">
+        <button
+          type="button"
+          onClick={toggle}
+          className="rounded px-2 py-0.5 font-bold text-sb-accent hover:bg-sb-line"
+        >
           сменить раскладку · switch
         </button>
       </div>
 
-      <div className="relative">
+      <div className="relative" role="group" aria-label="Cyrillic keyboard">
         {hint && (
           <div className="absolute -top-9 left-1/2 -translate-x-1/2 rounded-lg bg-sb-ink px-3 py-1 text-sm text-white shadow">
             {hint}
@@ -91,6 +95,8 @@ export default function CyrillicKeyboard({
             {row.map((ch) => (
               <button
                 key={ch}
+                type="button"
+                aria-label={HINTS[ch] ? `${ch}, ${HINTS[ch]}` : ch}
                 onClick={() => onKey(ch)}
                 onMouseDown={() => startHold(ch)}
                 onMouseUp={endHold}
@@ -108,12 +114,15 @@ export default function CyrillicKeyboard({
 
         <div className="flex justify-center gap-1">
           <button
+            type="button"
+            aria-label="Backspace"
             onClick={onBackspace}
             className="h-11 flex-1 rounded-lg bg-sb-card text-base shadow-sm active:bg-sb-line"
           >
             ⌫
           </button>
           <button
+            type="button"
             onClick={onSubmit}
             className="h-11 flex-[2] rounded-lg bg-sb-ink text-base font-bold text-white
                        shadow-sm active:bg-black"

@@ -35,37 +35,47 @@ Full stack on Postgres:
 docker compose up --build         # backend :8000, Postgres :5432
 ```
 
-## Test commands (both must be green)
+## Test commands (all must be green)
 
-Backend (181 tests):
+Backend:
 ```bash
 cd backend && rm -f *.db && python -m pytest -q
 ```
 
-Frontend (38 tests, plus typecheck and build):
+Frontend (tests, plus typecheck and build):
 ```bash
 cd frontend && npx tsc --noEmit && npm run build && npx vitest run
 ```
 
+Pipeline:
+```bash
+cd pipeline && python -m pytest -q
+```
+
+CI (`.github/workflows/ci.yml`) runs all of the above plus a fresh-chain migration check and a Playwright browser smoke test (`e2e/`, standalone package installed at CI time, no lockfile) on every push and PR to main. CodeQL and Dependabot run alongside.
+
 ## Architecture map
 
 Backend (`backend/app/`):
-- `main.py` app wiring, CORS, router includes. `create_all` runs on startup only when environment is not prod.
-- `config.py` settings from env or `.env` (pydantic-settings). Prod refuses to boot with the default JWT secret.
+- `main.py` app wiring, Sentry init (only when `SENTRY_DSN` is set), body-size middleware, CORS, router includes. `create_all` runs on startup only when environment is not prod.
+- `config.py` settings from env or `.env` (pydantic-settings). Prod refuses to boot with the default JWT secret. Integrations no-op when their vars are unset: `sentry_dsn`, `redis_url`, `resend_api_key`, `vapid_public_key`/`vapid_private_key`, `internal_task_token`.
 - `db.py` engine, `SessionLocal`, `Base`, `get_db`.
-- `models.py` SQLAlchemy models. `schemas.py` Pydantic request/response models.
+- `middleware.py` request body size cap (`max_body_bytes`, 64 KB default, 413 over it).
+- `models.py` SQLAlchemy models. `schemas.py` Pydantic request/response models; string inputs carry max_length caps.
 - `security.py` Argon2 hashing, JWT, token generation and hashing.
 - `grading.py` answer grading: Russian normalization (stress and ё/е insensitive), English normalization, Levenshtein tolerance.
 - `timeutil.py` `utcnow()` and `aware()`. Always use these, not naive datetimes (sqlite drops tz info).
 - `srs/engine.py` pure SRS: stages, intervals, `apply_review`, `band`, leech scoring.
-- `content/` stable identity and content import: `slugs.py` (`default_external_id`), `importer.py` (`validate_item`, `upsert_items`).
-- `services/` business logic: learning, study, dashboard, entitlements, billing, email, ratelimit, auth, account, synonyms, stats.
-- `routers/` HTTP endpoints, one module per area: auth, lessons, reviews, dashboard, study, billing, settings, items, push, stats.
-- `migrations/` Alembic. `seed_dev.py` demo content (uses the importer). `tests/` pytest suite, `conftest.py` fixtures.
+- `content/` stable identity and content import: `slugs.py` (`default_external_id`), `importer.py` (`validate_item`, `upsert_items`), `sentences.py` (`upsert_sentences`, keyed on `(item, source_ref)`, same never-truncate rule).
+- `services/` business logic: learning, study, dashboard (progress plus `build_forecast`), entitlements, billing, email (Resend when configured, dev outbox otherwise; verification, reset, and the weekly `send_weekly_digests`), ratelimit (Redis when configured, in-memory otherwise), push (pywebpush delivery, the review-reminder sweep, reminder opt-out and timezone-aware quiet hours), auth, account (settings, vacation, data export, deletion), synonyms, stats.
+- `routers/` HTTP endpoints, one module per area: auth, lessons, reviews (`/reviews/forecast`, `/reviews/undo` to correct a typo on the last answer), dashboard, study, billing, settings, items, push, stats, account (`/account/export`, `/account/delete`), internal (cron-triggered `/internal/push/run` and `/internal/email/digest` behind `X-Internal-Token`), client_errors (`/client-errors`, forwards uncaught frontend errors to Sentry).
+- `migrations/` Alembic. `seed_dev.py` demo content (uses the importer). `load_sentences.py` CLI that loads a sentence artifact. `tests/` pytest suite, `conftest.py` fixtures.
+
+Reserved keys in the `User.settings` JSON (do not reuse for user preferences): `vacation_started_at` (freeze mode), `last_reminder_sent_at` (push reminder cooldown), `onboarded` (first-run walkthrough done).
 
 Frontend (`frontend/src/`):
-- `lib/` `api.ts` (typed client with refresh-token auto-refresh), `grading.ts` (TS port of server grading, kept byte-identical for the client-side lesson quiz), `offlineQueue.ts` (IndexedDB), `sync.ts` (drains the queue to `/reviews/sync`), `push.ts` (VAPID subscribe), `useFetch.ts` (loading/error/retry hook for all data pages), `shuffle.ts` (Fisher-Yates plus pair spreading for session queues), `typing.ts` (physical-keyboard Latin to Cyrillic mapping), `labels.ts` (shared UI names: Tricky words, band names, level bands).
-- `components/` one per screen: App (view switch), AuthScreen, Home, LessonSession, ReviewSession, LeechesPage, PracticeSession, CyrillicKeyboard, ProductionInput (shared Russian answer input, physical plus on-screen), ItemInfoPanel (after-answer word details), ItemBrowser, SettingsPage, UpgradePage, ExtraStudyPage, BurnedPage, StatsPage, SessionSummary, LegalPage (renders bundled legal markdown), ui (PageHeader, MascotPlaceholder).
+- `lib/` `api.ts` (typed client with refresh-token auto-refresh), `grading.ts` (TS port of server grading, kept byte-identical for the client-side lesson quiz), `offlineQueue.ts` (IndexedDB: review queue, lesson cache, lesson completion queue), `sync.ts` (drains the review and lesson queues), `push.ts` (VAPID subscribe), `useFetch.ts` (loading/error/retry hook for all data pages), `shuffle.ts` (Fisher-Yates plus pair spreading for session queues), `typing.ts` (physical-keyboard Latin to Cyrillic mapping), `labels.ts` (shared UI names: Tricky words, band names, level bands), `urlParams.ts` (parses entry query params on the root URL: billing/verify/reset/goto), `theme.ts` (light/dark/system preference, reflected onto `html[data-theme]`), `useOnline.ts` (connectivity hook), `errorReporting.ts` (forwards uncaught errors to `POST /client-errors`).
+- `components/` one per screen: App (view switch), ErrorBoundary (crash fallback), OfflineBanner, AuthScreen, Onboarding (first-run walkthrough), Home, LessonSession, ReviewSession, LeechesPage, PracticeSession, CyrillicKeyboard, ProductionInput (shared Russian answer input, physical plus on-screen), ItemInfoPanel (after-answer word details plus audio/sentence attribution), ItemBrowser, SettingsPage, UpgradePage, ExtraStudyPage, BurnedPage, StatsPage (includes the review forecast), SessionSummary, LegalPage (renders bundled legal markdown), ui (PageHeader, MascotPlaceholder).
 - `legal/` bundled copies of the three user-facing docs from `docs/legal/`; keep them in sync when the source changes.
 - `public/` service worker (`sw.js`), web manifest, icon.
 
@@ -106,3 +116,5 @@ Add or update content: build a list of record dicts and call `upsert_items(db, r
 - Registration requires `accepted_terms: true` (400 otherwise); test helpers that register must send it.
 - The legal docs exist twice: `docs/legal/` is the source, `frontend/src/legal/` is the bundled copy the app renders. Change both together. Placeholders ([SUPPORT EMAIL], [DATE], [X days]) still need filling before publishing.
 - Fonts are self-hosted via fontsource because `sw.js` never caches cross-origin requests; a Google Fonts link would break offline.
+- The frontend has no path routing. Anything arriving from outside (Stripe checkout returns, email verification and reset links) must be query params on the root URL: `?billing=success|cancel`, `?verify=<token>`, `?reset=<token>`. App.tsx parses them once on mount (`lib/urlParams.ts`) and cleans the URL. Do not add links to paths like `/billing/success`; they 404 on the static deploy.
+- `BILLING_SUCCESS_URL`/`BILLING_CANCEL_URL` and the email links in `services/email.py` must stay in the query-param shape above.

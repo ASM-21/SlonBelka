@@ -1,0 +1,8 @@
+{
+  "name": "slonbelka-e2e",
+  "private": true,
+  "description": "Browser smoke tests. Deliberately no lockfile: installed fresh in CI, independent of the app's npm ci.",
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}
