@@ -77,6 +77,10 @@ def send_to_subscription(db: Session, sub: PushSubscription, payload: dict) -> b
         else:
             logger.warning("Push to subscription %s failed: %s", sub.id, exc)
         return False
+    except Exception:
+        # A bad VAPID key or an unexpected error must not abort the whole sweep.
+        logger.warning("Push to subscription %s errored", sub.id, exc_info=True)
+        return False
 
 
 def send_to_user(db: Session, user_id: int, payload: dict) -> int:

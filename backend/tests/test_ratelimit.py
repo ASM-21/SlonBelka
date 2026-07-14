@@ -54,3 +54,16 @@ def test_redis_failure_fails_open(monkeypatch):
     # Limit of 1, but every request is allowed because Redis is unreachable.
     assert ratelimit._allow("k", 1, 60)
     assert ratelimit._allow("k", 1, 60)
+
+
+class MisconfiguredRedis:
+    def eval(self, *args, **kwargs):
+        # A malformed REDIS_URL surfaces as a ValueError, not a RedisError.
+        raise ValueError("Redis URL must specify one of the following schemes")
+
+
+def test_non_redis_error_also_fails_open(monkeypatch):
+    monkeypatch.setattr(ratelimit.settings, "redis_url", "bogus://nope")
+    monkeypatch.setattr(ratelimit, "_redis_client", MisconfiguredRedis())
+    # Must not raise (which would 500 the guarded auth endpoint); allow instead.
+    assert ratelimit._allow("k", 1, 60)

@@ -48,10 +48,13 @@ def _get_redis() -> redis.Redis:
 
 
 def _allow_redis(key: str, limit: int, window_seconds: float) -> bool:
+    # Catch broadly, not just RedisError: a malformed REDIS_URL makes
+    # Redis.from_url raise ValueError, and the limiter must always fail open
+    # rather than 500 the request it is guarding.
     try:
         count = _get_redis().eval(_WINDOW_LUA, 1, f"rl:{key}", int(window_seconds * 1000))
         return int(count) <= limit
-    except redis.RedisError:
+    except Exception:
         logger.warning("Rate limiter Redis call failed, allowing request", exc_info=True)
         return True
 
@@ -83,7 +86,7 @@ def reset() -> None:
         try:
             for key in _redis_client.scan_iter("rl:*"):
                 _redis_client.delete(key)
-        except redis.RedisError:
+        except Exception:
             logger.warning("Rate limiter reset could not reach Redis", exc_info=True)
 
 
