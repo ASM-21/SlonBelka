@@ -26,15 +26,27 @@ from app.routers import account, auth, billing, client_errors, dashboard, intern
 # Import models so they register on Base before create_all.
 from app import models  # noqa: F401
 
-# No DSN means Sentry stays off (dev, tests). The FastAPI/Starlette
-# integration is enabled automatically by the SDK.
-if settings.sentry_dsn:
-    sentry_sdk.init(
-        dsn=settings.sentry_dsn,
-        environment=settings.environment,
-        send_default_pii=False,
-        traces_sample_rate=0.0,
-    )
+def _init_sentry() -> None:
+    """Initialize Sentry when a DSN is configured. Any failure (a malformed
+    DSN, a transport error) only disables error tracking; it must never crash
+    the service, so it is caught and logged. No DSN means Sentry stays off
+    (dev, tests)."""
+    if not settings.sentry_dsn:
+        return
+    try:
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=settings.environment,
+            send_default_pii=False,
+            traces_sample_rate=0.0,
+        )
+    except Exception:
+        logging.getLogger("slonbelka").warning(
+            "Sentry init failed; continuing without error tracking", exc_info=True
+        )
+
+
+_init_sentry()
 
 
 @asynccontextmanager
