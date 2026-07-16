@@ -94,7 +94,8 @@ describe("ItemBrowser", () => {
     await click(getByText("12/50")); // the level 1 tile
     getByText("сло́во1");
     getByText("1 words");
-    const last = vi.mocked(browseItems).mock.calls.at(-1)![0];
+    const calls = vi.mocked(browseItems).mock.calls;
+    const last = calls[calls.length - 1][0];
     expect(last).toMatchObject({ level: 1, limit: 50, offset: 0 });
   });
 
@@ -105,7 +106,8 @@ describe("ItemBrowser", () => {
     await typeInto(getField(/search word or meaning/), "сло");
     await wait(300); // past the 250ms debounce
     getByText("сло́во3");
-    const last = vi.mocked(browseItems).mock.calls.at(-1)![0];
+    const calls = vi.mocked(browseItems).mock.calls;
+    const last = calls[calls.length - 1][0];
     expect(last).toMatchObject({ search: "сло" });
   });
 
@@ -122,7 +124,8 @@ describe("ItemBrowser", () => {
 
     await click(getButton("Load more"));
     getByText("сло́во51");
-    const last = vi.mocked(browseItems).mock.calls.at(-1)![0];
+    const calls = vi.mocked(browseItems).mock.calls;
+    const last = calls[calls.length - 1][0];
     expect(last).toMatchObject({ offset: 50 });
   });
 
