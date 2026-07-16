@@ -9,8 +9,13 @@ import time
 from starlette.exceptions import HTTPException
 
 from app.config import settings
+from app.services.metrics import registry as metrics
 
 logger = logging.getLogger("slonbelka.request")
+
+# Probe endpoints are hit constantly by orchestrators; keeping them out of
+# the logs and the metrics stops them drowning out real traffic.
+PROBE_PATHS = {"/health", "/health/ready"}
 
 
 class BodySizeLimitMiddleware:
@@ -61,13 +66,14 @@ class BodySizeLimitMiddleware:
 class RequestLogMiddleware:
     """One structured log line per request: method, path, status, duration,
     client IP. Key=value format so a log platform can parse without config.
-    /health is skipped to keep liveness probes out of the logs."""
+    Each request is also counted into the in-process metrics registry.
+    Probe paths are skipped to keep liveness checks out of both."""
 
     def __init__(self, app) -> None:
         self.app = app
 
     async def __call__(self, scope, receive, send) -> None:
-        if scope["type"] != "http" or scope.get("path") == "/health":
+        if scope["type"] != "http" or scope.get("path") in PROBE_PATHS:
             await self.app(scope, receive, send)
             return
 
@@ -83,6 +89,7 @@ class RequestLogMiddleware:
             await self.app(scope, receive, logging_send)
         finally:
             duration_ms = (time.perf_counter() - start) * 1000
+            metrics.record(seen.get("status"), duration_ms)
             client = scope.get("client")
             logger.info(
                 "method=%s path=%s status=%s duration_ms=%.1f client=%s",

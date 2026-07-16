@@ -118,7 +118,7 @@ Remaining: set the VAPID keys, `INTERNAL_TASK_TOKEN`, and the GitHub secrets; co
 
 ### D4. Observability — DONE (code)
 Where: `app/main.py` initializes Sentry when `SENTRY_DSN` is set (environment tag, PII off).
-Remaining: set the DSN and trigger one test error to confirm capture. Structured request logging and metrics are still open.
+Remaining: set the DSN and trigger one test error to confirm capture. Structured request logging is in (`RequestLogMiddleware`), and basic in-process metrics (request totals, status classes, latency buckets) are served by `GET /internal/metrics` behind the internal token; `GET /health/ready` is the database-checking readiness probe.
 
 ### D5. CI — DONE
 Where: `.github/workflows/ci.yml`. Backend pytest plus pipeline tests, frontend typecheck, build, and vitest, and a fresh-chain migration check, on every push and PR to main.
