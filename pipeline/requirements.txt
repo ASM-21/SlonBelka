@@ -1,8 +1,14 @@
-# The spike uses the standard library only, no install needed.
-# Optional convenience for fetching the Kaikki data:
-# kaikki-json>=0.1.1
-#
-# Real pipeline (later) will likely add:
-# requests
-# pymorphy3        # lemmatization for frequency ordering
-# tqdm
+# spike_data_check.py: stdlib only.
+# Optional convenience for fetching the Kaikki data instead of a manual download:
+#   kaikki-json>=0.1.1
+
+# Real pipeline (lemmatize.py, kaikki_join.py, levels.py, audio.py, load_seed.py)
+pymorphy3>=1.2
+pymorphy3-dicts-ru>=2.4
+requests>=2.31
+boto3>=1.34            # R2 upload (S3-compatible)
+pydub>=0.25             # loudness normalize + silence trim; needs ffmpeg on PATH
+tqdm>=4.66
+
+# load_seed.py imports the backend app package directly (sys.path insert),
+# so it needs the backend's own deps installed too: see ../backend/requirements.txt

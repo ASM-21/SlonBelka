@@ -2,6 +2,8 @@
 
 For v1 the deck is curated and frequency-ordered, built from open data. Before building any of that, run the spike to confirm the data foundation holds.
 
+**The real pipeline (lemmatize -> join -> level -> audio -> load) is built and has been run against production.** See [`CONTENT_PIPELINE.md`](./CONTENT_PIPELINE.md) for how to run it end to end. This README still covers the spike, which is worth running once against the real Kaikki file for the coverage numbers A2 asks for, plus the sentences stage below.
+
 ## Example sentences: `sentences.py` (stage C2)
 
 Joins Tatoeba sentence exports to the deck and emits a versioned JSON artifact for the backend loader. Standalone and stdlib-only; it never touches the network or the database.
