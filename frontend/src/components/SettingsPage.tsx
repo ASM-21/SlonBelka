@@ -164,7 +164,7 @@ export default function SettingsPage({
               {s.frozen ? "Reviews are paused. No new reviews appear and items don't fall behind." : "Pause reviews while you're away"}
             </div>
           </div>
-          <Toggle on={s.frozen} onClick={toggleVacation} disabled={saving} />
+          <Toggle on={s.frozen} onClick={toggleVacation} disabled={saving} label="Vacation mode" />
         </div>
       </div>
 

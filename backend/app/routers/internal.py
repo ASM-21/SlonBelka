@@ -13,6 +13,7 @@ from app.config import settings
 from app.db import get_db
 from app.services import email as email_service
 from app.services import push as push_service
+from app.services.metrics import registry as metrics_registry
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 
@@ -32,3 +33,10 @@ def run_push_reminders(db: Session = Depends(get_db)) -> dict:
 @router.post("/email/digest", dependencies=[Depends(_require_internal_token)])
 def run_weekly_digest(db: Session = Depends(get_db)) -> dict:
     return email_service.send_weekly_digests(db)
+
+
+@router.get("/metrics", dependencies=[Depends(_require_internal_token)])
+def get_metrics() -> dict:
+    """Snapshot of the in-process request metrics: totals, status classes,
+    and latency buckets since this worker started. Per-worker numbers."""
+    return metrics_registry.snapshot()

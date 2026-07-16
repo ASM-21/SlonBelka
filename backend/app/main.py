@@ -13,9 +13,11 @@ from contextlib import asynccontextmanager
 import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.config import settings
-from app.db import Base, engine
+from app.db import Base, SessionLocal, engine
 from app.middleware import BodySizeLimitMiddleware, RequestLogMiddleware
 
 # Make app loggers (request lines, integration warnings) visible under
@@ -90,3 +92,16 @@ app.include_router(client_errors.router)
 @app.get("/health", tags=["health"])
 def health() -> dict:
     return {"status": "ok", "service": "slonbelka", "version": app.version}
+
+
+@app.get("/health/ready", tags=["health"])
+def health_ready() -> JSONResponse:
+    """Readiness probe: the process is up AND the database answers a trivial
+    query. /health stays liveness-only (never touches the DB) so restarts are
+    not triggered by a database blip; point load balancers here instead."""
+    try:
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "unavailable", "database": "error"})
+    return JSONResponse({"status": "ready", "database": "ok"})
