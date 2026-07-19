@@ -44,6 +44,7 @@ const settings: Settings = {
   keyboard_layout: "jcuken",
   onboarded: true,
   reminders_enabled: true,
+  reminder_hour: -1,
   quiet_hours_enabled: false,
   quiet_hours_start: 22,
   quiet_hours_end: 8,

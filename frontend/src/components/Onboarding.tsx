@@ -60,12 +60,14 @@ export default function Onboarding({
               </p>
               <p>
                 <span className="font-bold">2 · Reviews</span> come back at growing intervals:
-                4 hours, then a day, a week, a month. Answer correctly and the word climbs from
-                Apprentice toward Guru.
+                4 hours, then a day, a week, a month. Every word moves through five stages:
+                Apprentice (still learning it), Guru (you know it), Master, Enlightened, and
+                finally Burned. Each correct answer pushes the next review further away and the
+                word one step up.
               </p>
               <p>
                 <span className="font-bold">3 · Burned</span> words are done: reviewed enough
-                times that they're yours for good.
+                times that they're yours for good and leave the review queue.
               </p>
               <p className="text-sm text-sb-muted">
                 Miss a word and it simply comes back sooner. Short sessions every day beat long

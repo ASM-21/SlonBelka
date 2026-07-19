@@ -23,6 +23,11 @@ _FIELDS = [
 ]
 _REQUIRED = ["lemma", "stressed_form", "translation_primary", "level"]
 
+# Meanings are what the learner types as an answer; anything longer than this
+# is dictionary prose that belongs in `notes`, not in the accept-list. The
+# pipeline's curation stage (pipeline/curate.py) produces compliant records.
+MAX_TRANSLATION_LEN = 80
+
 
 def validate_item(rec: dict) -> list[str]:
     """Return a list of problems with a record; an empty list means it is valid."""
@@ -36,6 +41,18 @@ def validate_item(rec: dict) -> list[str]:
     translations = rec.get("translations")
     if translations is not None and not isinstance(translations, list):
         problems.append("translations must be a list")
+    primary = rec.get("translation_primary")
+    if isinstance(primary, str) and len(primary) > MAX_TRANSLATION_LEN:
+        problems.append(
+            f"translation_primary longer than {MAX_TRANSLATION_LEN} chars; "
+            "move prose to 'notes' and keep a short answer here"
+        )
+    if isinstance(translations, list):
+        for t in translations:
+            if isinstance(t, str) and len(t) > MAX_TRANSLATION_LEN:
+                problems.append(
+                    f"translation '{t[:40]}...' longer than {MAX_TRANSLATION_LEN} chars"
+                )
     return problems
 
 

@@ -27,6 +27,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
 from app.content.slugs import default_external_id  # noqa: E402
 
+from curate import curate_glosses, is_letter_entry  # noqa: E402
+
 OUT_DIR = Path("./out")
 
 
@@ -40,6 +42,8 @@ def eligible(row: dict) -> tuple[bool, str | None]:
         return False, "no stressed form"
     if not row.get("glosses"):
         return False, "no usable gloss"
+    if is_letter_entry(row["glosses"]):
+        return False, "alphabet letter, not vocabulary"
     return True, None
 
 
@@ -56,25 +60,35 @@ def build_records(rows: list[dict], level_size: int, max_words: int | None) -> t
         kept = kept[:max_words]
 
     records = []
-    for i, row in enumerate(kept, start=1):
-        level = (i - 1) // level_size + 1
+    i = 0
+    for row in kept:
         pos = row.get("part_of_speech")
-        glosses = row["glosses"]
+        # Raw glosses are dictionary prose; ship short typeable answers and
+        # keep the prose as a description (Item.notes) for display.
+        answers, description = curate_glosses(row["glosses"])
+        if not answers:
+            dropped.append({
+                "lemma": row["lemma"], "rank": row["rank"],
+                "reason": "no concise answer derivable from glosses",
+            })
+            continue
+        i += 1
+        level = (i - 1) // level_size + 1
         records.append({
             "external_id": default_external_id(row["lemma"], pos, 0),
             "type": "vocab",
             "level": level,
             "lemma": row["lemma"],
             "stressed_form": row["stressed_form"],
-            "translation_primary": glosses[0],
-            "translations": glosses,
+            "translation_primary": answers[0],
+            "translations": answers,
             "part_of_speech": pos,
             "gender": row.get("gender"),
             "aspect": row.get("aspect"),
             "ipa": row.get("ipa"),
             "audio_url": None,
             "frequency_rank": i,
-            "notes": None,
+            "notes": description,
             # carried through for the audio stage only, stripped before load
             "_native_audio_candidates": row.get("native_audio", []),
         })

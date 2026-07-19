@@ -7,7 +7,15 @@ import { useFetch } from "../lib/useFetch";
  * type, audio, user synonyms, examples, and a personal mnemonic. Fetches
  * lazily so a session only pays for it when the learner opens it.
  */
-export default function ItemInfoPanel({ itemId }: { itemId: number }) {
+export default function ItemInfoPanel({
+  itemId,
+  syncedSynonyms,
+}: {
+  itemId: number;
+  // Synonyms added outside the panel (e.g. the review screen's quick-add)
+  // that must show in the list even though our fetch predates them.
+  syncedSynonyms?: string[];
+}) {
   const { status, data: item, retry } = useFetch(() => getItem(itemId), [itemId]);
   const [synonyms, setSynonyms] = useState<string[]>([]);
   const [newSyn, setNewSyn] = useState("");
@@ -22,6 +30,14 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
       setMnemonicSaved(true);
     }
   }, [item]);
+
+  useEffect(() => {
+    if (!syncedSynonyms?.length) return;
+    setSynonyms((cur) => {
+      const missing = syncedSynonyms.filter((s) => !cur.includes(s));
+      return missing.length ? [...cur, ...missing] : cur;
+    });
+  }, [syncedSynonyms]);
 
   if (status === "loading")
     return (
@@ -42,7 +58,11 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
     );
 
   const alternatives = item.translations.filter((t) => t !== item.translation_primary);
-  const meta = [item.part_of_speech, item.gender, item.aspect].filter(Boolean).join(" · ");
+  const chips = [
+    item.part_of_speech,
+    item.gender && `gender: ${item.gender}`,
+    item.aspect && `aspect: ${item.aspect}`,
+  ].filter(Boolean) as string[];
 
   const addSyn = async () => {
     const text = newSyn.trim();
@@ -86,7 +106,26 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
         )}
       </Row>
 
-      {meta && <Row label="Word type">{meta}</Row>}
+      {item.notes && (
+        <Row label="About this word">
+          <p className="leading-relaxed text-sb-muted">{item.notes}</p>
+        </Row>
+      )}
+
+      {chips.length > 0 && (
+        <Row label="Word type">
+          <div className="flex flex-wrap gap-1.5">
+            {chips.map((chip) => (
+              <span
+                key={chip}
+                className="rounded-full bg-sb-card2 px-2.5 py-0.5 text-xs font-semibold text-sb-ink"
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+        </Row>
+      )}
       {item.ipa && <Row label="Pronunciation">/{item.ipa}/</Row>}
 
       {item.audio_url && (
@@ -152,7 +191,7 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
           <ul className="space-y-2">
             {item.sentences.map((s, i) => (
               <li key={i}>
-                <div className="text-sb-ink">{s.ru}</div>
+                <div className="text-sb-ink">{highlightWord(s.ru, item.lemma)}</div>
                 <div className="text-xs text-sb-muted">{s.en}</div>
               </li>
             ))}
@@ -184,6 +223,31 @@ export default function ItemInfoPanel({ itemId }: { itemId: number }) {
       </Row>
     </Panel>
   );
+}
+
+/**
+ * Bold the studied word inside an example sentence. Russian inflects, so an
+ * exact lemma match often fails; fall back to any word sharing the lemma's
+ * stem (lemma minus its last two letters, at least three letters long).
+ */
+function highlightWord(sentence: string, lemma: string): React.ReactNode {
+  const lower = lemma.toLowerCase();
+  const stem = lower.length > 4 ? lower.slice(0, -2) : lower.slice(0, Math.max(3, lower.length - 1));
+  const words = sentence.split(/(\s+)/); // keep the whitespace tokens
+  let done = false;
+  return words.map((w, i) => {
+    if (done) return w;
+    const core = w.toLowerCase().replace(/[^а-яё-]/g, "");
+    if (core === lower || (core.length >= stem.length && core.startsWith(stem))) {
+      done = true;
+      return (
+        <strong key={i} className="font-bold text-sb-accent">
+          {w}
+        </strong>
+      );
+    }
+    return w;
+  });
 }
 
 function Panel({ children }: { children: React.ReactNode }) {

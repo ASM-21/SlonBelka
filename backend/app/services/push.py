@@ -32,7 +32,15 @@ from app.timeutil import aware as _aware, utcnow as _utcnow
 logger = logging.getLogger(__name__)
 
 REMINDER_KEY = "last_reminder_sent_at"
+REMINDER_HOUR_KEY = "reminder_hour"
 REMINDER_COOLDOWN = timedelta(hours=6)
+
+
+def _user_tz(user: User) -> ZoneInfo:
+    try:
+        return ZoneInfo(user.timezone or "UTC")
+    except (ZoneInfoNotFoundError, ValueError):
+        return ZoneInfo("UTC")
 
 
 def _in_quiet_hours(user: User, now: datetime) -> bool:
@@ -43,15 +51,20 @@ def _in_quiet_hours(user: User, now: datetime) -> bool:
         return False
     start = s.get("quiet_hours_start", 22)
     end = s.get("quiet_hours_end", 7)
-    try:
-        tz = ZoneInfo(user.timezone or "UTC")
-    except (ZoneInfoNotFoundError, ValueError):
-        tz = ZoneInfo("UTC")
-    hour = now.astimezone(tz).hour
+    hour = now.astimezone(_user_tz(user)).hour
     if start <= end:
         return start <= hour < end
     # Wraps midnight, e.g. 22:00 to 07:00.
     return hour >= start or hour < end
+
+
+def _at_preferred_hour(user: User, now: datetime) -> bool:
+    """Whether now matches the user's preferred reminder hour, evaluated in
+    their own timezone. Unset (or invalid) means any hour is fine."""
+    hour = (user.settings or {}).get(REMINDER_HOUR_KEY)
+    if not isinstance(hour, int) or not 0 <= hour <= 23:
+        return True
+    return now.astimezone(_user_tz(user)).hour == hour
 
 
 def configured() -> bool:
@@ -94,7 +107,7 @@ def send_review_reminders(db: Session) -> dict:
     """Notify every subscribed user with due reviews, at most once per
     cooldown window. Returns counts for the trigger endpoint's response."""
     if not configured():
-        return {"sent": 0, "skipped": 0, "checked": 0, "configured": False}
+        return {"sent": 0, "skipped": 0, "errors": 0, "checked": 0, "configured": False}
 
     now = _utcnow()
 
@@ -116,44 +129,64 @@ def send_review_reminders(db: Session) -> dict:
         db.scalars(select(PushSubscription.user_id).distinct()).all()
     )
 
-    sent = skipped = 0
+    sent = skipped = errors = 0
     for user_id in sorted(subscribed_ids & set(due_counts)):
-        user = db.get(User, user_id)
-        if user is None:
-            continue
-        user_settings = user.settings or {}
-        if user_settings.get(VACATION_KEY):
-            skipped += 1
-            continue
-        if not user_settings.get("reminders_enabled", True):
-            skipped += 1
-            continue
-        if _in_quiet_hours(user, now):
-            skipped += 1
-            continue
-        last_raw = user_settings.get(REMINDER_KEY)
-        if last_raw:
-            last = _aware(datetime.fromisoformat(last_raw))
-            if now - last < REMINDER_COOLDOWN:
+        # One bad user (corrupt settings, a DB hiccup) must not abort the
+        # whole sweep: /internal/push/run would 500 and every later user
+        # would silently miss their reminder.
+        try:
+            user = db.get(User, user_id)
+            if user is None:
+                continue
+            user_settings = user.settings or {}
+            if user_settings.get(VACATION_KEY):
                 skipped += 1
                 continue
+            if not user_settings.get("reminders_enabled", True):
+                skipped += 1
+                continue
+            if _in_quiet_hours(user, now):
+                skipped += 1
+                continue
+            if not _at_preferred_hour(user, now):
+                skipped += 1
+                continue
+            last_raw = user_settings.get(REMINDER_KEY)
+            if last_raw:
+                try:
+                    last = _aware(datetime.fromisoformat(last_raw))
+                except (TypeError, ValueError):
+                    # Corrupt timestamp: treat as never reminded; the next
+                    # successful send overwrites it with a valid value.
+                    logger.warning(
+                        "User %s has corrupt %s value %r", user_id, REMINDER_KEY, last_raw
+                    )
+                    last = None
+                if last is not None and now - last < REMINDER_COOLDOWN:
+                    skipped += 1
+                    continue
 
-        n = due_counts[user_id]
-        payload = {
-            "title": "Slonbelka",
-            "body": f"You have {n} review{'s' if n != 1 else ''} due",
-            "count": n,  # mirrored onto the app icon badge by the service worker
-        }
-        if send_to_user(db, user_id, payload) > 0:
-            updated = dict(user_settings)
-            updated[REMINDER_KEY] = now.isoformat()
-            user.settings = updated  # reassign so SQLAlchemy sees the JSON change
-            db.commit()
-            sent += 1
+            n = due_counts[user_id]
+            payload = {
+                "title": "Slonbelka",
+                "body": f"You have {n} review{'s' if n != 1 else ''} due",
+                "count": n,  # mirrored onto the app icon badge by the service worker
+            }
+            if send_to_user(db, user_id, payload) > 0:
+                updated = dict(user_settings)
+                updated[REMINDER_KEY] = now.isoformat()
+                user.settings = updated  # reassign so SQLAlchemy sees the JSON change
+                db.commit()
+                sent += 1
+        except Exception:
+            errors += 1
+            logger.warning("Reminder sweep failed for user %s", user_id, exc_info=True)
+            db.rollback()
 
     return {
         "sent": sent,
         "skipped": skipped,
+        "errors": errors,
         "checked": len(subscribed_ids & set(due_counts)),
         "configured": True,
     }

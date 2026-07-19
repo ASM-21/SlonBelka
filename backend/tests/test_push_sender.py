@@ -144,7 +144,101 @@ def test_unconfigured_sweep_is_a_noop(client):
     _setup_due_user(client)
     with SessionLocal() as db:
         result = push_service.send_review_reminders(db)
-    assert result == {"sent": 0, "skipped": 0, "checked": 0, "configured": False}
+    assert result == {"sent": 0, "skipped": 0, "errors": 0, "checked": 0, "configured": False}
+
+
+def test_corrupt_cooldown_stamp_does_not_abort_sweep(client, vapid, monkeypatch):
+    # Two due users; the first carries a corrupt last_reminder_sent_at.
+    _setup_due_user(client, email="bad@e.com")
+    _setup_due_user(client, email="ok@e.com")
+    calls = []
+    monkeypatch.setattr(push_service, "webpush", lambda **kw: calls.append(kw))
+
+    with SessionLocal() as db:
+        user = db.query(User).filter(User.email == "bad@e.com").one()
+        user.settings = {**(user.settings or {}), push_service.REMINDER_KEY: "not-a-date"}
+        db.commit()
+        result = push_service.send_review_reminders(db)
+
+    # The corrupt stamp counts as "never reminded": both users get one.
+    assert result["sent"] == 2
+    assert result["errors"] == 0
+    assert len(calls) == 2
+
+    # The corrupt value was overwritten by a valid timestamp on send.
+    with SessionLocal() as db:
+        user = db.query(User).filter(User.email == "bad@e.com").one()
+        stamp = user.settings[push_service.REMINDER_KEY]
+    from datetime import datetime
+
+    datetime.fromisoformat(stamp)  # must parse now
+
+
+def test_one_failing_user_does_not_block_the_rest(client, vapid, monkeypatch):
+    _setup_due_user(client, email="boom@e.com")
+    _setup_due_user(client, email="fine@e.com")
+    calls = []
+    monkeypatch.setattr(push_service, "webpush", lambda **kw: calls.append(kw))
+
+    real_quiet = push_service._in_quiet_hours
+
+    def explode_for_boom(user, now):
+        if user.email == "boom@e.com":
+            raise RuntimeError("corrupt settings")
+        return real_quiet(user, now)
+
+    monkeypatch.setattr(push_service, "_in_quiet_hours", explode_for_boom)
+    with SessionLocal() as db:
+        result = push_service.send_review_reminders(db)
+
+    assert result["sent"] == 1
+    assert result["errors"] == 1
+    assert len(calls) == 1
+
+
+def test_preferred_reminder_hour():
+    from datetime import datetime, timezone
+
+    def user_with(hour, tz="UTC"):
+        u = User()
+        u.timezone = tz
+        u.settings = {push_service.REMINDER_HOUR_KEY: hour}
+        return u
+
+    # 22:00 UTC.
+    now = datetime(2026, 7, 12, 22, 0, tzinfo=timezone.utc)
+    assert push_service._at_preferred_hour(user_with(22), now) is True
+    assert push_service._at_preferred_hour(user_with(9), now) is False
+    # Evaluated in the user's timezone: 22:00 UTC is 18:00 in New York (EDT).
+    assert push_service._at_preferred_hour(user_with(18, "America/New_York"), now) is True
+    # Unset or invalid values mean any hour is fine.
+    assert push_service._at_preferred_hour(user_with(None), now) is True
+    assert push_service._at_preferred_hour(user_with("nine"), now) is True
+    assert push_service._at_preferred_hour(user_with(42), now) is True
+
+
+def test_off_hour_user_is_skipped_in_sweep(client, vapid, monkeypatch):
+    headers = _setup_due_user(client)
+    calls = []
+    monkeypatch.setattr(push_service, "webpush", lambda **kw: calls.append(kw))
+
+    with SessionLocal() as db:
+        user = db.query(User).filter(User.email == "p@e.com").one()
+        wrong_hour = (utcnow().hour + 1) % 24
+        user.settings = {**(user.settings or {}), push_service.REMINDER_HOUR_KEY: wrong_hour}
+        db.commit()
+        result = push_service.send_review_reminders(db)
+    assert result["sent"] == 0
+    assert result["skipped"] == 1
+    assert calls == []
+
+    with SessionLocal() as db:
+        user = db.query(User).filter(User.email == "p@e.com").one()
+        user.settings = {**(user.settings or {}), push_service.REMINDER_HOUR_KEY: utcnow().hour}
+        db.commit()
+        result = push_service.send_review_reminders(db)
+    assert result["sent"] == 1
+    assert len(calls) == 1
 
 
 def test_internal_endpoint_auth(client, vapid, monkeypatch):

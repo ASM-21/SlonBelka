@@ -224,6 +224,9 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
               также · also: {item.translations.filter((t) => t !== item.translation_primary).join(", ")}
             </div>
           )}
+          {item.notes && (
+            <p className="mt-3 text-left text-sm leading-relaxed text-sb-muted">{item.notes}</p>
+          )}
           {[item.part_of_speech, item.gender, item.aspect].some(Boolean) && (
             <div className="mt-3 inline-block rounded-full bg-sb-accent-soft px-3 py-1 text-xs font-semibold text-sb-accent">
               {[item.part_of_speech, item.gender, item.aspect].filter(Boolean).join(" · ")}
@@ -351,7 +354,7 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
               }}
               onKeyDown={(e) => e.key === "Enter" && !e.repeat && input && grade(false)}
               placeholder="english meaning"
-              className="w-full rounded-xl border border-sb-line bg-sb-card px-3 py-3.5 text-center text-lg outline-none focus:border-sb-muted"
+              className="w-full rounded-xl border-2 border-sb-gold-soft bg-sb-card px-3 py-3.5 text-center text-lg outline-none focus:border-sb-gold"
             />
           ) : (
             <ProductionInput
@@ -375,15 +378,14 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
             </div>
           )}
 
-          {isMeaning && (
-            <button
-              onClick={() => input && grade(false)}
-              disabled={!input}
-              className="mt-3 w-full rounded-xl bg-sb-ink py-3 font-bold text-white disabled:opacity-40"
-            >
-              Проверить · Check
-            </button>
-          )}
+          {/* One action slot: Check here, Continue in the same spot on feedback. */}
+          <button
+            onClick={() => input && grade(false)}
+            disabled={!input}
+            className="mt-3 w-full rounded-xl bg-sb-ink py-3 font-bold text-white disabled:opacity-40"
+          >
+            Проверить · Check
+          </button>
         </div>
       ) : (
         <div className="mt-5 text-center">
@@ -396,16 +398,16 @@ export default function LessonSession({ onDone }: { onDone: () => void }) {
           >
             {feedback.correct ? "Верно · Correct" : "Не совсем · You'll see this again"}
           </div>
-          <div className="mt-4 font-display text-4xl font-bold text-sb-ink">{feedback.expected}</div>
           <button
             autoFocus
             onClick={next}
-            className={`mt-5 w-full rounded-xl py-3 font-bold text-white ${
+            className={`mt-3 w-full rounded-xl py-3 font-bold text-white ${
               feedback.correct ? "bg-[#2E6B45]" : "bg-[#A83B33]"
             }`}
           >
             Дальше · Continue
           </button>
+          <div className="mt-4 font-display text-4xl font-bold text-sb-ink">{feedback.expected}</div>
         </div>
       )}
     </div>
