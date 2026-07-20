@@ -215,7 +215,7 @@ export default function SettingsPage({
               <div className="pr-4">
                 <div className="text-sm font-semibold text-sb-ink">Preferred time</div>
                 <div className="text-sm text-sb-muted">
-                  Only remind me around this hour (your local time)
+                  Only remind me around this hour, in your timezone
                 </div>
               </div>
               <select
