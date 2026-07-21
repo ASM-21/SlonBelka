@@ -80,11 +80,13 @@ def test_onboarded_flag_round_trips(client, auth):
 def test_reminder_and_session_settings_round_trip(client, auth):
     s = client.get("/settings", headers=auth).json()
     assert s["reminders_enabled"] is True
+    assert s["reminder_hour"] == -1  # any hour
     assert s["quiet_hours_enabled"] is False
     assert s["session_size"] == 0
 
     r = client.patch("/settings", headers=auth, json={
         "reminders_enabled": False,
+        "reminder_hour": 9,
         "quiet_hours_enabled": True,
         "quiet_hours_start": 23,
         "quiet_hours_end": 6,
@@ -92,6 +94,7 @@ def test_reminder_and_session_settings_round_trip(client, auth):
     })
     body = r.json()
     assert body["reminders_enabled"] is False
+    assert body["reminder_hour"] == 9
     assert body["quiet_hours_enabled"] is True
     assert body["quiet_hours_start"] == 23
     assert body["quiet_hours_end"] == 6
@@ -100,6 +103,8 @@ def test_reminder_and_session_settings_round_trip(client, auth):
     # Out-of-range values are rejected by validation.
     assert client.patch("/settings", headers=auth, json={"quiet_hours_start": 24}).status_code == 422
     assert client.patch("/settings", headers=auth, json={"session_size": 500}).status_code == 422
+    assert client.patch("/settings", headers=auth, json={"reminder_hour": 24}).status_code == 422
+    assert client.patch("/settings", headers=auth, json={"reminder_hour": -2}).status_code == 422
 
 
 # --------------------------------------------------------------------------- #

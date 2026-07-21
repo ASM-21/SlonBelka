@@ -213,6 +213,29 @@ export default function SettingsPage({
           <div className="mt-3 border-t border-sb-line pt-3">
             <div className="flex items-center justify-between">
               <div className="pr-4">
+                <div className="text-sm font-semibold text-sb-ink">Preferred time</div>
+                <div className="text-sm text-sb-muted">
+                  Only remind me around this hour, in your timezone
+                </div>
+              </div>
+              <select
+                aria-label="Preferred reminder hour"
+                value={s.reminder_hour}
+                onChange={(e) => patch({ reminder_hour: Number(e.target.value) })}
+                disabled={saving}
+                className="rounded-lg border border-sb-line bg-sb-card px-2 py-1 text-sm text-sb-ink"
+              >
+                <option value={-1}>any time</option>
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>
+                    {String(h).padStart(2, "0")}:00
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between border-t border-sb-line pt-3">
+              <div className="pr-4">
                 <div className="text-sm font-semibold text-sb-ink">Quiet hours</div>
                 <div className="text-sm text-sb-muted">No reminders during these hours</div>
               </div>

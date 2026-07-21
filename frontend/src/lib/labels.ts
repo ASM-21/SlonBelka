@@ -25,13 +25,14 @@ export const BAND_LABELS_RU: Record<string, string> = {
 };
 
 // Named bands of ten levels for the dictionary grid (WaniKani-style).
-// Placeholder names, adjust to taste; levels past the last band reuse it.
+// A growth metaphor, sprout to forest. Deliberately avoids Белка/Слон so the
+// brand animals stay branding (the words themselves can still be vocabulary).
 export const LEVEL_BANDS: { ru: string; en: string }[] = [
   { ru: "Росток", en: "Sprout" },
-  { ru: "Орех", en: "Nut" },
-  { ru: "Белка", en: "Squirrel" },
-  { ru: "Слон", en: "Elephant" },
-  { ru: "Память", en: "Memory" },
+  { ru: "Саженец", en: "Sapling" },
+  { ru: "Дерево", en: "Tree" },
+  { ru: "Роща", en: "Grove" },
+  { ru: "Лес", en: "Forest" },
 ];
 
 export const levelBand = (level: number) =>

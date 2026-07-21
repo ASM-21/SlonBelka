@@ -114,7 +114,7 @@ export default function PracticeSession({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.repeat && input && submit()}
               placeholder="english meaning"
-              className="w-full rounded-xl border border-sb-line bg-sb-card px-3 py-3.5 text-center text-lg outline-none focus:border-sb-muted"
+              className="w-full rounded-xl border-2 border-sb-gold-soft bg-sb-card px-3 py-3.5 text-center text-lg outline-none focus:border-sb-gold"
             />
           ) : (
             <ProductionInput
@@ -125,15 +125,14 @@ export default function PracticeSession({
               onToggleLayout={toggleKb}
             />
           )}
-          {isMeaning && (
-            <button
-              onClick={() => input && submit()}
-              disabled={!input}
-              className="mt-3 w-full rounded-xl bg-sb-ink py-3 font-bold text-white disabled:opacity-40"
-            >
-              Проверить · Check
-            </button>
-          )}
+          {/* One action slot: Check here, Continue in the same spot on feedback. */}
+          <button
+            onClick={() => input && submit()}
+            disabled={!input}
+            className="mt-3 w-full rounded-xl bg-sb-ink py-3 font-bold text-white disabled:opacity-40"
+          >
+            Проверить · Check
+          </button>
         </div>
       ) : (
         <div className="mt-5 text-center">
@@ -144,17 +143,17 @@ export default function PracticeSession({
           >
             {feedback.correct ? "Верно · Correct" : "Не совсем · Not quite"}
           </div>
-          <div className="mt-4 font-display text-4xl font-bold text-sb-ink">{feedback.stressed}</div>
-          <div className="mt-1 text-sb-muted">{feedback.expected}</div>
           <button
             autoFocus
             onClick={cont}
-            className={`mt-6 w-full rounded-xl py-3 font-bold text-white ${
+            className={`mt-3 w-full rounded-xl py-3 font-bold text-white ${
               feedback.correct ? "bg-[#2E6B45]" : "bg-[#A83B33]"
             }`}
           >
             Дальше · Continue
           </button>
+          <div className="mt-4 font-display text-4xl font-bold text-sb-ink">{feedback.stressed}</div>
+          <div className="mt-1 text-sb-muted">{feedback.expected}</div>
         </div>
       )}
 

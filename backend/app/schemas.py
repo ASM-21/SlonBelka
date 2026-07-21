@@ -68,6 +68,7 @@ class LessonItem(BaseModel):
     gender: str | None = None
     aspect: str | None = None
     audio_url: str | None = None
+    notes: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -210,6 +211,18 @@ class BillingStatus(BaseModel):
     accessible_level: int
 
 
+class PlanPrice(BaseModel):
+    amount: int  # smallest currency unit, e.g. cents
+    currency: str  # lowercase ISO code as Stripe reports it, e.g. "usd"
+    interval: str | None = None  # "month" | "year" | None for one-time
+
+
+class BillingPrices(BaseModel):
+    # Keyed by plan (monthly | yearly | lifetime); a plan is absent when its
+    # price ID is unset or Stripe is unconfigured.
+    prices: dict[str, PlanPrice]
+
+
 # ---- sync, settings, vacation ----
 class SyncRequest(BaseModel):
     events: list[SubmitReviewRequest]
@@ -232,6 +245,7 @@ class SettingsResponse(BaseModel):
     keyboard_layout: str
     onboarded: bool = False
     reminders_enabled: bool = True
+    reminder_hour: int = -1  # preferred local hour for reminders; -1 means any
     quiet_hours_enabled: bool = False
     quiet_hours_start: int = 22
     quiet_hours_end: int = 7
@@ -245,6 +259,7 @@ class SettingsPatch(BaseModel):
     keyboard_layout: str | None = None
     onboarded: bool | None = None
     reminders_enabled: bool | None = None
+    reminder_hour: int | None = Field(default=None, ge=-1, le=23)
     quiet_hours_enabled: bool | None = None
     quiet_hours_start: int | None = Field(default=None, ge=0, le=23)
     quiet_hours_end: int | None = Field(default=None, ge=0, le=23)

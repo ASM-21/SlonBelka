@@ -76,6 +76,7 @@ export interface LessonItem {
   gender?: string | null;
   aspect?: string | null;
   audio_url?: string | null;
+  notes?: string | null;
 }
 
 export interface ReviewItem {
@@ -191,6 +192,7 @@ export interface Settings {
   keyboard_layout: string;
   onboarded: boolean;
   reminders_enabled: boolean;
+  reminder_hour: number; // preferred local hour for reminders; -1 means any
   quiet_hours_enabled: boolean;
   quiet_hours_start: number;
   quiet_hours_end: number;
@@ -383,7 +385,15 @@ export const removeSynonym = (itemId: number, text: string) =>
   });
 
 // ---------- billing ----------
+export interface PlanPrice {
+  amount: number; // smallest currency unit, e.g. cents
+  currency: string;
+  interval?: string | null;
+}
+
 export const getBillingStatus = () => api<BillingStatus>("/billing/status");
+export const getBillingPrices = () =>
+  api<{ prices: Record<string, PlanPrice> }>("/billing/prices");
 export const checkout = (plan: string) =>
   api<{ url: string }>("/billing/checkout", { method: "POST", body: JSON.stringify({ plan }) });
 export const billingPortal = () => api<{ url: string }>("/billing/portal", { method: "POST" });

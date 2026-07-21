@@ -34,6 +34,8 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
   const [nearMiss, setNearMiss] = useState(false);
   const [pending, setPending] = useState(0);
   const [synAdded, setSynAdded] = useState(false);
+  // Synonyms quick-added this question, mirrored into the info panel's list.
+  const [addedSynonyms, setAddedSynonyms] = useState<string[]>([]);
   const [showInfo, setShowInfo] = useState(false);
   const [exited, setExited] = useState(false);
   const [lastEventId, setLastEventId] = useState<string | null>(null);
@@ -122,6 +124,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
     setInput("");
     setResult(null);
     setSynAdded(false);
+    setAddedSynonyms([]);
     setShowInfo(false);
     setLastEventId(null);
     setUndone(false);
@@ -149,6 +152,9 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
       setNearMiss(false);
       setResult(res);
       setLastEventId(clientEventId);
+      // WaniKani-style: a miss opens the word details right away; a correct
+      // answer stays compact (green highlight, Enter moves on).
+      setShowInfo(!res.correct);
       setPhase("feedback");
 
       // Record session outcomes (first attempt per question for accuracy).
@@ -195,23 +201,32 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
     setPhase("answering");
   };
 
-  // Enter drives the session even when nothing is focused (auto-focus is not
-  // guaranteed in every browser): it submits the typed answer, advances from
-  // feedback, and continues after an offline save. Skipped while focus is in
-  // a field (typing) or on a button, whose native click already fires on Enter.
+  // Physical-keyboard driving. Enter works even when nothing is focused
+  // (auto-focus is not guaranteed in every browser): it submits the typed
+  // answer, advances from feedback, and continues after an offline save.
+  // On the feedback screen the number keys are shortcuts (letters stay free
+  // for typing answers): 1 marks a miss as a typo, 2 toggles word details.
+  // All skipped while focus is in a field (typing) or on a button, whose
+  // native click already fires on Enter.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Enter" || e.repeat) return;
+      if (e.repeat) return;
       const el = document.activeElement;
       if (
         el instanceof HTMLInputElement ||
         el instanceof HTMLTextAreaElement ||
-        el instanceof HTMLButtonElement
+        (el instanceof HTMLButtonElement && e.key === "Enter")
       )
         return;
-      if (phase === "feedback") cont();
-      else if (phase === "offline") contOffline();
-      else if (input) send(false);
+      if (e.key === "Enter") {
+        if (phase === "feedback") cont();
+        else if (phase === "offline") contOffline();
+        else if (input) send(false);
+      } else if (phase === "feedback" && e.key === "1") {
+        if (result && !result.correct && lastEventId && !undone) markCorrect();
+      } else if (phase === "feedback" && e.key === "2") {
+        setShowInfo((v) => !v);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -330,7 +345,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
                 }}
                 onKeyDown={(e) => e.key === "Enter" && !e.repeat && input && send(false)}
                 placeholder="english meaning"
-                className="w-full rounded-xl border border-sb-line bg-sb-card px-3 py-3.5 text-center text-lg outline-none focus:border-sb-muted"
+                className="w-full rounded-xl border-2 border-sb-gold-soft bg-sb-card px-3 py-3.5 text-center text-lg outline-none focus:border-sb-gold"
               />
             ) : (
               <ProductionInput
@@ -354,15 +369,15 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
               </div>
             )}
 
-            {isMeaning && (
-              <button
-                onClick={() => input && send(false)}
-                disabled={!input}
-                className="mt-3 w-full rounded-xl bg-sb-ink py-3 font-bold text-white disabled:opacity-40"
-              >
-                Проверить · Check
-              </button>
-            )}
+            {/* One action slot for the whole session: Check here, Continue in
+                the same spot on the feedback screen. */}
+            <button
+              onClick={() => input && send(false)}
+              disabled={!input}
+              className="mt-3 w-full rounded-xl bg-sb-ink py-3 font-bold text-white disabled:opacity-40"
+            >
+              Проверить · Check
+            </button>
           </div>
         ) : phase === "offline" ? (
           <div className="mt-5 text-center">
@@ -372,7 +387,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
             <button
               autoFocus
               onClick={contOffline}
-              className="mt-6 w-full rounded-xl bg-sb-ink py-3 font-bold text-white"
+              className="mt-3 w-full rounded-xl bg-sb-ink py-3 font-bold text-white"
             >
               Дальше · Continue
             </button>
@@ -399,7 +414,19 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
             >
               {result?.correct ? "Верно · Correct" : "Не совсем · Not quite"}
             </p>
-            <div className="mt-3 font-display text-4xl font-bold text-sb-ink">{result?.stressed_form}</div>
+
+            {/* Same slot as the Check button, so the finger/cursor never moves. */}
+            <button
+              autoFocus
+              onClick={cont}
+              className={`mt-3 w-full rounded-xl py-3 font-bold text-white ${
+                result?.correct ? "bg-[#2E6B45]" : "bg-[#A83B33]"
+              }`}
+            >
+              Дальше · Continue
+            </button>
+
+            <div className="mt-4 font-display text-4xl font-bold text-sb-ink">{result?.stressed_form}</div>
             <div className="mt-1 text-sb-muted">{result?.expected}</div>
             {result && !result.correct && lastEventId && !undone && (
               <button
@@ -419,9 +446,11 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
               ) : (
                 <button
                   onClick={async () => {
+                    const text = input.trim();
                     try {
-                      await addSynonym(cur.item_id, input.trim());
+                      await addSynonym(cur.item_id, text);
                       setSynAdded(true);
+                      setAddedSynonyms((s) => [...s, text]);
                     } catch {
                       /* button stays for another try */
                     }
@@ -439,7 +468,7 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
             )}
 
             {showInfo ? (
-              <ItemInfoPanel itemId={cur.item_id} />
+              <ItemInfoPanel itemId={cur.item_id} syncedSynonyms={addedSynonyms} />
             ) : (
               <button
                 onClick={() => setShowInfo(true)}
@@ -449,15 +478,9 @@ export default function ReviewSession({ onDone }: { onDone: () => void }) {
               </button>
             )}
 
-            <button
-              autoFocus
-              onClick={cont}
-              className={`mt-6 w-full rounded-xl py-3 font-bold text-white ${
-                result?.correct ? "bg-[#2E6B45]" : "bg-[#A83B33]"
-              }`}
-            >
-              Дальше · Continue
-            </button>
+            <p className="mt-4 hidden text-xs text-sb-muted sm:block">
+              Enter continues · 1 marks a typo correct · 2 toggles details
+            </p>
           </div>
         )}
       </div>

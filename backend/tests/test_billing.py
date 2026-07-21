@@ -136,3 +136,62 @@ def test_webhook_accepts_unsigned_json_in_dev(client):
     r = client.post("/billing/webhook", json={"type": "ping", "data": {"object": {}}})
     assert r.status_code == 200
     assert r.json()["received"] is True
+
+
+# ---- display prices -------------------------------------------------------
+
+
+class _FakePrice:
+    """Stands in for the stripe module: Price.retrieve returns canned dicts."""
+
+    calls = 0
+    data = {
+        "price_m": {"unit_amount": 500, "currency": "usd", "recurring": {"interval": "month"}},
+        "price_l": {"unit_amount": 12000, "currency": "usd", "recurring": None},
+    }
+
+    @classmethod
+    def retrieve(cls, price_id):
+        cls.calls += 1
+        return cls.data[price_id]
+
+
+@pytest.fixture()
+def fake_stripe_prices(monkeypatch):
+    from app.services import billing
+
+    class FakeStripe:
+        Price = _FakePrice
+
+    _FakePrice.calls = 0
+    monkeypatch.setattr(billing, "_prices_cache", None)
+    monkeypatch.setattr(billing.settings, "stripe_secret_key", "sk_test")
+    monkeypatch.setattr(billing.settings, "stripe_price_monthly", "price_m")
+    monkeypatch.setattr(billing.settings, "stripe_price_lifetime", "price_l")
+    monkeypatch.setattr(billing, "_stripe", lambda: FakeStripe)
+    yield
+    billing._prices_cache = None
+
+
+def test_prices_empty_when_unconfigured(client, auth):
+    r = client.get("/billing/prices", headers=auth)
+    assert r.status_code == 200
+    assert r.json() == {"prices": {}}
+
+
+def test_prices_come_from_stripe_and_are_cached(client, auth, fake_stripe_prices):
+    r = client.get("/billing/prices", headers=auth)
+    assert r.status_code == 200
+    prices = r.json()["prices"]
+    assert prices["monthly"] == {"amount": 500, "currency": "usd", "interval": "month"}
+    assert prices["lifetime"] == {"amount": 12000, "currency": "usd", "interval": None}
+    assert "yearly" not in prices  # its price ID is unset
+
+    # A second request is served from the cache, not Stripe.
+    calls_after_first = _FakePrice.calls
+    client.get("/billing/prices", headers=auth)
+    assert _FakePrice.calls == calls_after_first
+
+
+def test_prices_requires_auth(client):
+    assert client.get("/billing/prices").status_code in (401, 403)

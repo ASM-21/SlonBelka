@@ -9,7 +9,7 @@ from app.config import settings
 from app.db import get_db
 from app.models import User
 from app.routers.auth import current_user
-from app.schemas import BillingStatus, CheckoutRequest, UrlResponse
+from app.schemas import BillingPrices, BillingStatus, CheckoutRequest, UrlResponse
 from app.services import billing
 
 router = APIRouter(prefix="/billing", tags=["billing"])
@@ -58,3 +58,10 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> dict:
 @router.get("/status", response_model=BillingStatus)
 def billing_status(user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
     return billing.status_for(db, user)
+
+
+@router.get("/prices", response_model=BillingPrices)
+def billing_prices(user: User = Depends(current_user)) -> dict:
+    # Unconfigured Stripe yields an empty map, not an error, so the upgrade
+    # page can render its fallback copy.
+    return {"prices": billing.get_prices()}

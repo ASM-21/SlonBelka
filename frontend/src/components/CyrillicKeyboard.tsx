@@ -38,7 +38,6 @@ const HINTS: Record<string, string> = {
 interface Props {
   onKey: (ch: string) => void;
   onBackspace: () => void;
-  onSubmit: () => void;
   layout?: Layout;
   onToggleLayout?: () => void;
 }
@@ -46,7 +45,6 @@ interface Props {
 export default function CyrillicKeyboard({
   onKey,
   onBackspace,
-  onSubmit,
   layout,
   onToggleLayout,
 }: Props) {
@@ -91,7 +89,7 @@ export default function CyrillicKeyboard({
         )}
 
         {rows.map((row, i) => (
-          <div key={i} className="mb-1.5 flex justify-center gap-1">
+          <div key={i} className="mb-1.5 flex justify-center gap-0.5 sm:gap-1">
             {row.map((ch) => (
               <button
                 key={ch}
@@ -103,33 +101,28 @@ export default function CyrillicKeyboard({
                 onMouseLeave={endHold}
                 onTouchStart={() => startHold(ch)}
                 onTouchEnd={endHold}
-                className="h-11 min-w-[1.9rem] flex-1 rounded-lg bg-sb-card text-lg shadow-sm
-                           active:bg-sb-line sm:min-w-[2.2rem]"
+                className="h-11 min-w-0 flex-1 rounded-lg bg-sb-card text-base shadow-sm
+                           active:bg-sb-line sm:text-lg"
               >
                 {ch}
               </button>
             ))}
+            {/* Backspace rides the last letter row so every key, letters and
+                all, shares one grid; submission lives in the session's own
+                Check button below the keyboard. */}
+            {i === rows.length - 1 && (
+              <button
+                type="button"
+                aria-label="Backspace"
+                onClick={onBackspace}
+                className="h-11 min-w-0 flex-[1.5] rounded-lg bg-sb-card2 text-base shadow-sm
+                           active:bg-sb-line"
+              >
+                ⌫
+              </button>
+            )}
           </div>
         ))}
-
-        <div className="flex justify-center gap-1">
-          <button
-            type="button"
-            aria-label="Backspace"
-            onClick={onBackspace}
-            className="h-11 flex-1 rounded-lg bg-sb-card text-base shadow-sm active:bg-sb-line"
-          >
-            ⌫
-          </button>
-          <button
-            type="button"
-            onClick={onSubmit}
-            className="h-11 flex-[2] rounded-lg bg-sb-ink text-base font-bold text-white
-                       shadow-sm active:bg-black"
-          >
-            Проверить · Check
-          </button>
-        </div>
       </div>
     </div>
   );

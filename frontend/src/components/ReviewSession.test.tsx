@@ -32,9 +32,30 @@ vi.mock("../lib/shuffle", () => ({
 vi.mock("../lib/offlineQueue", () => ({ enqueue: vi.fn() }));
 vi.mock("../lib/sync", () => ({ drainQueue: vi.fn() }));
 
-import { getReviews, getSettings, submitReview, undoReview } from "../lib/api";
+import { getItem, getReviews, getSettings, submitReview, undoReview } from "../lib/api";
+import type { ItemDetail } from "../lib/api";
 import { enqueue } from "../lib/offlineQueue";
 import { drainQueue } from "../lib/sync";
+
+const itemDetail: ItemDetail = {
+  id: 1,
+  lemma: "привет",
+  stressed_form: "приве́т",
+  translation_primary: "hello",
+  part_of_speech: "noun",
+  level: 1,
+  frequency_rank: 1,
+  status: "apprentice",
+  srs_stage: 1,
+  available_at: null,
+  is_leech: false,
+  accessible: true,
+  translations: ["hello", "hi"],
+  synonyms: [],
+  sentences: [],
+  mnemonic: null,
+  notes: null,
+};
 
 const settings: Settings = {
   daily_lesson_cap: 10,
@@ -42,6 +63,7 @@ const settings: Settings = {
   keyboard_layout: "jcuken",
   onboarded: true,
   reminders_enabled: true,
+  reminder_hour: -1,
   quiet_hours_enabled: false,
   quiet_hours_start: 22,
   quiet_hours_end: 8,
@@ -74,6 +96,8 @@ const result = (over: Partial<SubmitResult> = {}): SubmitResult => ({
 function setup(reviews: ReviewItem[], s: Settings = settings) {
   vi.mocked(getReviews).mockResolvedValue(reviews);
   vi.mocked(getSettings).mockResolvedValue(s);
+  // The info panel auto-opens on a miss and fetches the item detail.
+  vi.mocked(getItem).mockResolvedValue(itemDetail);
   return render(<ReviewSession onDone={() => {}} />);
 }
 
@@ -155,6 +179,45 @@ describe("ReviewSession", () => {
     getByText(/1 left/);
     getByText("слово-один");
     expect(queryByText("слово-два")).toBeNull();
+  });
+
+  it("auto-opens word details on a miss and keeps them closed when correct", async () => {
+    vi.mocked(submitReview).mockResolvedValueOnce(
+      result({ status: "incorrect", correct: false, srs_stage: 1 }),
+    );
+    await setup([review(1, "привет")]);
+
+    await typeInto(getField("English meaning"), "wrong");
+    await click(getButton(/Проверить/));
+    // Panel content is visible without pressing "Show details".
+    getByText("Your synonyms");
+    expect(queryByText(/Show details/)).toBeNull();
+
+    // Re-queued question, this time answered correctly: panel stays closed.
+    vi.mocked(submitReview).mockResolvedValueOnce(result());
+    await click(getButton(/Дальше/));
+    await typeInto(getField("English meaning"), "hello");
+    await click(getButton(/Проверить/));
+    getByText(/Верно · Correct/);
+    expect(queryByText("Your synonyms")).toBeNull();
+    getByText(/Show details/);
+  });
+
+  it("shows a quick-added synonym in the details panel list", async () => {
+    vi.mocked(submitReview).mockResolvedValue(
+      result({ status: "incorrect", correct: false, srs_stage: 1 }),
+    );
+    const { addSynonym } = await import("../lib/api");
+    vi.mocked(addSynonym).mockResolvedValue({ synonyms: ["greetings"] });
+    await setup([review(1, "привет")]);
+
+    await typeInto(getField("English meaning"), "greetings");
+    await click(getButton(/Проверить/));
+    await click(getButton(/Accept "greetings" next time/));
+    getByText(/Added "greetings" as a synonym/);
+    // The panel's synonym list (auto-opened by the miss) shows it too: the
+    // chip carries a remove button labeled after the synonym.
+    getButton(/remove greetings/);
   });
 
   it("queues the answer offline when the request fails, then syncs at the end", async () => {

@@ -38,6 +38,7 @@ DEFAULT_SETTINGS = {
     "keyboard_layout": "jcuken",  # jcuken | phonetic
     "onboarded": False,  # set true once the first-run walkthrough is done
     "reminders_enabled": True,  # receive review-due push reminders
+    "reminder_hour": -1,  # preferred local hour [0, 23] for reminders; -1 means any hour
     "quiet_hours_enabled": False,  # suppress reminders during a nightly window
     "quiet_hours_start": 22,  # local hour [0, 23], inclusive
     "quiet_hours_end": 7,  # local hour [0, 23], exclusive

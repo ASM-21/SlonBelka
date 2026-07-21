@@ -106,6 +106,51 @@ def create_checkout(db: Session, user: User, plan: str) -> str:
     return session["url"]
 
 
+# Display prices are read from the configured Stripe Price objects and cached
+# in-process so the upgrade page does not hit Stripe on every load. Prices
+# change rarely; an hour of staleness is fine.
+_PRICES_TTL_SECONDS = 3600
+_prices_cache: tuple[datetime, dict] | None = None
+
+
+def get_prices() -> dict:
+    """Fetch display amounts for the configured plans from Stripe.
+
+    Returns {plan: {"amount": int, "currency": str, "interval": str | None}}.
+    Unconfigured plans (or unconfigured Stripe) are simply absent, so the
+    frontend can fall back gracefully. Never raises: a Stripe hiccup degrades
+    to whatever the cache holds, or an empty dict.
+    """
+    global _prices_cache
+    if not configured():
+        return {}
+    now = _utcnow()
+    if _prices_cache is not None and (now - _prices_cache[0]).total_seconds() < _PRICES_TTL_SECONDS:
+        return _prices_cache[1]
+
+    stripe = _stripe()
+    prices: dict[str, dict] = {}
+    for plan, get_id in _PRICE_BY_PLAN.items():
+        price_id = get_id()
+        if not price_id:
+            continue
+        try:
+            price = stripe.Price.retrieve(price_id)
+        except Exception:
+            # Keep serving the stale cache rather than blanking the page.
+            if _prices_cache is not None:
+                return _prices_cache[1]
+            return {}
+        recurring = price.get("recurring") or {}
+        prices[plan] = {
+            "amount": price.get("unit_amount") or 0,
+            "currency": price.get("currency") or "usd",
+            "interval": recurring.get("interval"),
+        }
+    _prices_cache = (now, prices)
+    return prices
+
+
 def create_portal(db: Session, user: User) -> str:
     if not configured():
         raise BillingNotConfigured("Stripe is not configured")

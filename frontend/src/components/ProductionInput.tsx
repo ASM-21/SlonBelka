@@ -54,6 +54,8 @@ export default function ProductionInput({
 
   return (
     <>
+      {/* The accent border mirrors the prompt card's accent tint: this input
+          answers in Russian (the meaning input carries the gold tint). */}
       <input
         ref={ref}
         autoFocus
@@ -66,12 +68,11 @@ export default function ProductionInput({
         autoCorrect="off"
         spellCheck={false}
         placeholder="…"
-        className="mb-3 w-full rounded-xl border border-sb-line bg-sb-card px-3 py-3 text-center text-2xl outline-none focus:border-sb-muted"
+        className="mb-3 w-full rounded-xl border-2 border-sb-accent-soft bg-sb-card px-3 py-3 text-center text-2xl outline-none focus:border-sb-accent"
       />
       <CyrillicKeyboard
         onKey={insert}
         onBackspace={() => onChange(value.slice(0, -1))}
-        onSubmit={() => value && onSubmit()}
         layout={layout}
         onToggleLayout={onToggleLayout}
       />

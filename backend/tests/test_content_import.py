@@ -77,6 +77,17 @@ def test_validate_item_flags_problems():
     assert any("translations" in p for p in validate_item(_rec(translations="test")))
 
 
+def test_validate_item_rejects_prose_translations():
+    prose = (
+        "The nineteenth letter of the Russian alphabet, called эс (es) and "
+        "written in the Cyrillic script."
+    )
+    assert any("prose" in p for p in validate_item(_rec(translation_primary=prose)))
+    assert any("longer than" in p for p in validate_item(_rec(translations=["ok", prose])))
+    # 80 chars exactly is still fine.
+    assert validate_item(_rec(translation_primary="x" * 80)) == []
+
+
 def test_seed_is_idempotent(client):
     """Re-running seed upserts, it does not duplicate."""
     from app.db import SessionLocal
