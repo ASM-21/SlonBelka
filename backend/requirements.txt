@@ -1,4 +1,4 @@
-fastapi>=0.139.0
+fastapi>=0.139.2
 uvicorn[standard]>=0.51.0
 sqlalchemy>=2.0.51
 pydantic>=2.13.4
@@ -8,10 +8,10 @@ argon2-cffi>=25.1.0
 pyjwt>=2.13.0
 alembic>=1.18.5
 psycopg2-binary>=2.9.12
-stripe>=15.3.0
+stripe>=15.3.1
 pytest>=9.1.1
 httpx>=0.28.1
-sentry-sdk[fastapi]>=2.65.0
+sentry-sdk[fastapi]>=2.66.0
 redis>=8.0.1
 pywebpush>=2.3.0
 # The slim runtime image ships no IANA tz database; without this, zoneinfo
